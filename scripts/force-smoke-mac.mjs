@@ -23,8 +23,9 @@ for (const dir of Object.values(dirs)) fs.mkdirSync(dir, { mode: 0o700 });
 fs.writeFileSync(path.join(dirs.config, 'settings.json'), JSON.stringify({
     'telemetry:enabled': false, 'autoupdate:enabled': false, 'term:disablewebgl': true,
     'app:confirmquit': false,
+    'term:localshellpath': '/bin/zsh',
 }));
-const report = { platform: process.platform, arch: process.arch, checks: [], passed: false,
+const report = { platform: process.platform, arch: process.arch, shell: '/bin/zsh', checks: [], passed: false,
     limits: ['No physical M5, Finder/Dock, SSH, Wave coexistence, Keychain or signed update test.',
         'CI extraction does not reproduce browser quarantine or first-download Gatekeeper handling.'] };
 const owned = new Set();
@@ -227,6 +228,12 @@ try {
     report.error = error.message;
     console.error(`FAIL: ${error.message}`);
     process.exitCode = 1;
+    const logPath = path.join(dirs.data, 'waveapp.log');
+    if (fs.existsSync(logPath)) {
+        report.runtimeDiagnostics = fs.readFileSync(logPath, 'utf8').split('\n')
+            .filter(line => /shellproc|starting shell|blockcontroller update|error starting|shutdown complete|Caught SIGTERM|wavesrv exited/.test(line))
+            .slice(-20).map(line => line.replace(/[A-Za-z0-9_-]{24,}(?:\.[A-Za-z0-9_-]+)*/g, '<redacted>'));
+    }
     for (const connection of connections) {
         try {
             report.domDiagnostic = await connection.evaluate('({monaco:!!document.querySelector(".monaco-editor"),nativeEditContext:!!document.querySelector(".native-edit-context"),legacyTextArea:!!document.querySelector(".monaco-editor textarea.inputarea")})');
