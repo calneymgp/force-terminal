@@ -80,9 +80,13 @@ async function connect(url) {
 }
 async function launch() {
     const debugPort = await port();
+    const logPath = path.join(dirs.data, 'waveapp.log');
+    const logOffset = fs.existsSync(logPath) ? fs.statSync(logPath).size : 0;
+    const env = Object.fromEntries(['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'LANG', 'LC_ALL', 'TMPDIR', 'TERM']
+        .filter(key => process.env[key] !== undefined).map(key => [key, process.env[key]]));
     const proc = spawn(executable, ['--remote-debugging-address=127.0.0.1', `--remote-debugging-port=${debugPort}`], {
         detached: true, stdio: ['ignore', 'pipe', 'pipe'], env: {
-            ...process.env,
+            ...env,
             FORCE_TERMINAL_DATA_HOME: dirs.data, FORCE_TERMINAL_CONFIG_HOME: dirs.config,
             FORCE_TERMINAL_CACHE_HOME: dirs.cache,
             WCLOUD_ENDPOINT: 'https://127.0.0.1:1', WCLOUD_PING_ENDPOINT: 'https://127.0.0.1:1',
@@ -98,7 +102,7 @@ async function launch() {
     proc.once('close', (code, signal) => { exited = { code, signal }; owned.delete(proc); });
     let renderer;
     await until(async () => {
-        if (exited) throw new Error('Packaged app exited before renderer was ready');
+        if (exited) throw new Error(`Packaged app exited before renderer was ready: ${JSON.stringify(exited)}`);
         let targets;
         try {
             targets = await (await fetch(`http://127.0.0.1:${debugPort}/json/list`, { signal: AbortSignal.timeout(1000) })).json();
@@ -111,7 +115,8 @@ async function launch() {
         }
         return false;
     }, 'packaged renderer readiness');
-    return { proc, renderer, getExit: () => exited, getLogs: () => logs };
+    return { proc, renderer, getExit: () => exited,
+        getLogs: () => (fs.existsSync(logPath) ? fs.readFileSync(logPath).subarray(logOffset).toString() : '') + logs };
 }
 async function screenshot(cdp, name) {
     const result = await cdp.call('Page.captureScreenshot', { format: 'png' });
@@ -125,6 +130,11 @@ async function quit(app) {
     assert.doesNotMatch(app.getLogs(), /shutdown storage flush failed|secretstore: error writing secrets/);
     app.renderer.close();
 }
+async function clickButton(cdp, label) {
+    const expression = `Array.from(document.querySelectorAll('button')).find(button=>button.textContent.trim().startsWith(${JSON.stringify(label)}))`;
+    await until(() => cdp.evaluate(`Boolean(${expression})`), `onboarding ${label}`);
+    assert.equal(await cdp.evaluate(`(()=>{const button=${expression};button.click();return true})()`), true);
+}
 try {
     const first = await launch();
     const cdp = first.renderer;
@@ -134,8 +144,11 @@ try {
     assert.equal(profile.config, dirs.config);
     assert.equal(profile.updater, 'dev-disabled');
     checked('packaged renderer, Force profile and ad hoc updater isolation');
+    await until(() => cdp.evaluate('document.body.innerText.includes("Welcome to Force Terminal")'), 'Force onboarding');
     await screenshot(cdp, '01-onboarding.png');
-    await cdp.evaluate('window.globalStore.set(window.modalsModel.newInstallOnboardingOpen,false);window.globalStore.set(window.modalsModel.upgradeOnboardingOpen,false);true');
+    await clickButton(cdp, 'Continue');
+    await clickButton(cdp, 'Maybe Later');
+    await clickButton(cdp, 'Skip Feature Tour');
     await until(() => cdp.evaluate('Boolean(document.querySelector(".xterm-helper-textarea")) && Array.from(document.querySelectorAll(".xterm-rows > div")).some(row => row.textContent.trim())'), 'terminal mount and shell output');
     await cdp.evaluate('document.querySelector(".xterm-helper-textarea").focus();true');
     const suffix = crypto.randomUUID().replaceAll('-', '');
