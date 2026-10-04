@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import net from 'node:net';
-import { spawn, execFileSync } from 'node:child_process';
+import { spawn, execFileSync, execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { setTimeout as delay } from 'node:timers/promises';
 import WebSocket from 'ws';
 
@@ -21,6 +22,7 @@ const dirs = Object.fromEntries(['data', 'config', 'cache'].map(name => [name, p
 for (const dir of Object.values(dirs)) fs.mkdirSync(dir, { mode: 0o700 });
 fs.writeFileSync(path.join(dirs.config, 'settings.json'), JSON.stringify({
     'telemetry:enabled': false, 'autoupdate:enabled': false, 'term:disablewebgl': true,
+    'app:confirmquit': false,
 }));
 const report = { platform: process.platform, arch: process.arch, checks: [], passed: false,
     limits: ['No physical M5, Finder/Dock, SSH, Wave coexistence, Keychain or signed update test.',
@@ -125,7 +127,9 @@ async function screenshot(cdp, name) {
     fs.writeFileSync(path.join(output, name), Buffer.from(result.data, 'base64'));
 }
 async function quit(app) {
-    app.proc.kill('SIGTERM'); // The real main-process handler calls app.quit(), including persistence.
+    // Use the native application quit event. OS SIGTERM did not reach the Node
+    // handler in the packaged macOS CI run, so it cannot prove the user quit flow.
+    await promisify(execFile)('osascript', ['-e', 'tell application id "io.github.calneymgp.force-terminal" to quit'], { timeout: 10000 });
     try {
         await until(() => Boolean(app.getExit()), 'normal app/backend quit', 40000);
     } catch (error) {
@@ -151,6 +155,11 @@ async function clickButton(cdp, label) {
     const expression = `Array.from(document.querySelectorAll('button')).find(button=>button.textContent.trim().startsWith(${JSON.stringify(label)}))`;
     await until(() => cdp.evaluate(`Boolean(${expression})`), `onboarding ${label}`);
     assert.equal(await cdp.evaluate(`(()=>{const button=${expression};button.click();return true})()`), true);
+}
+async function commandKey(cdp, key, code, keyCode) {
+    for (const type of ['keyDown', 'keyUp']) {
+        await cdp.call('Input.dispatchKeyEvent', { type, key, code, modifiers: 4, windowsVirtualKeyCode: keyCode });
+    }
 }
 try {
     const first = await launch();
@@ -183,6 +192,17 @@ try {
     assert.equal(await cdp.evaluate(`window.RpcApi.FileReadCommand(window.TabRpcClient,{info:{path:${JSON.stringify(file)}}}).then(r=>atob(r.data64)==='after-smoke\\n')`), true);
     assert.equal(fs.readFileSync(file, 'utf8'), 'after-smoke\n');
     checked('real renderer/backend local file read and write');
+    const editorRequest = { tabid: await cdp.evaluate('window.globalStore.get(window.globalAtoms.staticTabId)'),
+        blockdef: { meta: { view: 'preview', file, edit: true } }, focused: true };
+    await cdp.evaluate(`window.RpcApi.CreateBlockCommand(window.TabRpcClient,${JSON.stringify(editorRequest)}).then(()=>true)`);
+    await until(() => cdp.evaluate('Boolean(document.querySelector(".monaco-editor textarea.inputarea"))'), 'visual editor mount');
+    await cdp.evaluate('document.querySelector(".monaco-editor textarea.inputarea").focus();true');
+    await commandKey(cdp, 'a', 'KeyA', 65);
+    await cdp.call('Input.insertText', { text: 'edited-in-ui\n' });
+    await commandKey(cdp, 's', 'KeyS', 83);
+    await until(() => cdp.evaluate(`window.RpcApi.FileReadCommand(window.TabRpcClient,{info:{path:${JSON.stringify(file)}}}).then(r=>atob(r.data64)==='edited-in-ui\\n')`), 'visual editor Cmd+S persistence');
+    assert.equal(fs.readFileSync(file, 'utf8'), 'edited-in-ui\n');
+    checked('visual editor typed and saved local file with Cmd+S');
     const tabId = await cdp.evaluate('window.globalStore.get(window.globalAtoms.staticTabId)');
     assert.ok(tabId);
     const metaRequest = { oref: `tab:${tabId}`, meta: { 'force:smoke': marker } };
@@ -193,7 +213,7 @@ try {
     const second = await launch();
     assert.equal(await second.renderer.evaluate('window.globalStore.get(window.globalAtoms.staticTabId)'), tabId);
     assert.equal(await second.renderer.evaluate(`window.RpcApi.GetMetaCommand(window.TabRpcClient,{oref:${JSON.stringify(`tab:${tabId}`)}}).then(r=>r['force:smoke']===${JSON.stringify(marker)})`), true);
-    assert.equal(await second.renderer.evaluate(`window.RpcApi.FileReadCommand(window.TabRpcClient,{info:{path:${JSON.stringify(file)}}}).then(r=>atob(r.data64)==='after-smoke\\n')`), true);
+    assert.equal(await second.renderer.evaluate(`window.RpcApi.FileReadCommand(window.TabRpcClient,{info:{path:${JSON.stringify(file)}}}).then(r=>atob(r.data64)==='edited-in-ui\\n')`), true);
     await screenshot(second.renderer, '03-reopened.png');
     await quit(second);
     checked('same tab, database metadata and file survived normal quit/relaunch');
