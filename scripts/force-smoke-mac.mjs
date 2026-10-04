@@ -177,7 +177,9 @@ try {
     await until(() => cdp.evaluate('!document.querySelector(".modal-wrapper")'), 'single welcome completed');
     assert.equal(await cdp.evaluate('document.body.innerText.includes("Telemetry Disabled") || document.body.innerText.includes("Skip Feature Tour")'), false);
     checked('one welcome popup; Continue opened the application without secondary onboarding');
-    await until(() => cdp.evaluate('Boolean(document.querySelector(".xterm-helper-textarea")) && Array.from(document.querySelectorAll(".xterm-rows > div")).some(row => row.textContent.trim())'), 'terminal mount and shell output');
+    // A CI shell may have an empty prompt. Readiness is verified by executing
+    // the command below and checking its distinct output, rather than prompt text.
+    await until(() => cdp.evaluate('Boolean(document.querySelector(".xterm-helper-textarea"))'), 'terminal mount');
     await cdp.evaluate('document.querySelector(".xterm-helper-textarea").focus();true');
     const suffix = crypto.randomUUID().replaceAll('-', '');
     const marker = `FORCE_MAC_SMOKE_${suffix}`;
