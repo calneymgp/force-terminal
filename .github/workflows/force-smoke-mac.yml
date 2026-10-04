@@ -6,7 +6,7 @@ on:
       artifact_run_id:
         description: Execução aprovada do workflow DMG de teste
         required: true
-        default: '37221443395'
+        default: '37224909810'
         type: string
 permissions:
   contents: read

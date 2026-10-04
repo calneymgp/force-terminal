@@ -42,6 +42,8 @@ Pré-requisitos de renderização: `python3 -m pip install -r scripts/brand-requ
 
 ## Integração e limites desta etapa
 
+O [build macOS 37224909810](https://github.com/calneymgp/force-terminal/actions/runs/37224909810) verificou nome, bundle ID e metadados no app/ZIP/DMG. A conferência do ZIP após download confirmou que `CFBundleIconFile` aponta para `icon.icns`, com bytes idênticos ao ICNS gerado dos vetores Force aprovados. O [smoke do pacote 37225675703](https://github.com/calneymgp/force-terminal/actions/runs/37225675703) confirmou o título Force em runtime e registrou capturas de onboarding, terminal/editor e reabertura. As páginas iniciais e o padrão de novas páginas agora apontam para `calneymgp/force-terminal`; links de créditos upstream foram preservados. Isso valida essas superfícies no runner, sem encerrar a conferência visual de Finder, Dock, About e instalação no M5.
+
 A marca foi aplicada à interface, aos ícones de janelas Electron, aos recursos dos instaladores e aos metadados do pacote. O publish do electron-builder aponta para os releases de `calneymgp/force-terminal`; esta configuração não publica uma versão por si só.
 
 O bootstrap usa perfis próprios `force-terminal` e `force-terminal-dev`; o helper remoto usa `~/.force-terminal`. Variáveis internas de transporte, protocolos e nomes dos binários `wavesrv`/`wsh` foram preservados. Não há importação automática dos dados Wave. A coexistência real, incluindo secrets/Keychain, ainda precisa de validação no M5.

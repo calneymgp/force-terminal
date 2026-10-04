@@ -22,6 +22,10 @@ Direcionamento posterior: canal `community` padrão pelo GitHub, seguindo a expe
 - Artifact `force-terminal-mac-arm64-adhoc` (id `11309509403`) foi baixado; o manifesto SHA-256 foi validado novamente no servidor. O DMG tem **201174599 bytes** e SHA-256 `379e441240fe36edb43a8e5031eca3785ed61e6d6dcd24cf35cc9c21f7d1d6d8`.
 - O instalador foi entregue por página HTML na rede Tailscale, conforme escolha do usuário. Nenhuma release estável ou credencial foi criada. `main` e a branch Force já contêm a implementação; a execução não comprova abertura no M5 ou atualização instalada.
 
+## Pacote atualizado e executado
+
+O [build 37224909810](https://github.com/calneymgp/force-terminal/actions/runs/37224909810) passou com a correção das páginas iniciais Force. O [smoke 37225675703](https://github.com/calneymgp/force-terminal/actions/runs/37225675703) aprovou abertura, Zsh, arquivos por RPC, editor visual/Cmd+S, quit nativo e persistência na reabertura do app extraído desse DMG. O instalador no link Tailscale foi substituído por esse pacote: **201174686 bytes**, SHA-256 `b9ea8cb16e88c162328c1a1161b852a9e20079ac2f046c644e1fa402faee327e`. A versão continua 0.14.5, ad hoc e sem updater; não houve publicação de release. Detalhes e limites em [RUNTIME-REPORT.md](RUNTIME-REPORT.md).
+
 ## Pendências de execução
 
 - Build/empacotamento macOS arm64 em runner: concluído conforme execução acima. Instalação e abertura no M5: pendentes.

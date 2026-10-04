@@ -26,6 +26,8 @@ O DMG e ZIP são transportes do `.app` assinado. Em `official`, o app dentro dos
 
 ## Smoke no Mac M5
 
+Para repetir o teste automatizado do pacote, execute `Force Terminal smoke do DMG` (`force-smoke-mac.yml`) informando `artifact_run_id` de um build ad hoc concluído, enquanto seu artifact ainda estiver disponível. O [build 37224909810](https://github.com/calneymgp/force-terminal/actions/runs/37224909810) foi aprovado pelo [smoke 37225675703](https://github.com/calneymgp/force-terminal/actions/runs/37225675703). O workflow valida hashes, executa a cópia extraída do DMG sem alterar a assinatura e testa terminal Zsh, arquivos, editor visual/Cmd+S, quit nativo e reabertura em perfil temporário. O artifact de resultados contém relatório e capturas; limites em [RUNTIME-REPORT.md](RUNTIME-REPORT.md). Continue o roteiro abaixo no M5: o runner não cobre SSH, coexistência, Keychain ou atualização instalada.
+
 1. No perfil `force-terminal-dev`, abra terminal, rode um comando curto, abra um arquivo local e um remoto com conexão SSH descartável; feche e reabra, verificando a persistência.
 2. Instale um DMG ad hoc somente para validar execução e marca no Finder, Dock e UI. Confirme que Force e Wave coexistem e que os dados Wave não foram tocados.
 3. Com o certificado próprio Force configurado, instale a release `community` `vN`, publique `vN+1` pelo workflow usando a mesma identidade/fingerprint e confira que a consulta não baixa antes do clique; clique, acompanhe progresso, veja adiamento se houver comando ativo, então reinicie e confira dados persistidos. Não considere esse teste aprovado somente porque o tamz-bot Tauri atualiza.

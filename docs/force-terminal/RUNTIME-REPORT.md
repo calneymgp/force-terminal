@@ -1,4 +1,25 @@
-# Smoke de runtime em Linux x64
+# Smoke de runtime Force Terminal
+
+## Pacote macOS arm64: aprovado no GitHub
+
+O [build 37224909810](https://github.com/calneymgp/force-terminal/actions/runs/37224909810), fonte `f824866a6035a17146779879e9f659d646e0f58d`, produziu o DMG ad hoc 0.14.5 com as páginas iniciais apontando para o fork Force. O [smoke 37225675703](https://github.com/calneymgp/force-terminal/actions/runs/37225675703) baixou esse artefato, conferiu o manifesto, montou o DMG somente para leitura, copiou o app sem alterar sua assinatura e validou `codesign --verify --deep --strict` antes de executá-lo em macOS arm64.
+
+O relatório `force-terminal-mac-runtime-smoke/report.json` registra `passed: true` para seis verificações:
+
+- Renderer real, nome Force, caminhos do perfil descartável e updater ad hoc desabilitado.
+- Terminal local executando `printf`, com a saída identificada em linha distinta do comando digitado.
+- Leitura e escrita de arquivo pelo renderer e backend reais, com conteúdo confirmado no disco.
+- Editor visual Monaco: digitação e Cmd+S gravaram um conteúdo diferente, conferido por RPC e leitura do arquivo.
+- Encerramento pelo evento nativo de quit do macOS, com saída 0 e `shutdown complete` sem erro de flush.
+- Reabertura do mesmo perfil: mesma aba, metadado gravado no banco e arquivo editado recuperados; segundo encerramento também normal.
+
+O perfil de teste usa Zsh `/bin/zsh`, telemetria e consultas automáticas desativadas, renderização DOM do terminal e confirmação de quit desativada. São configurações do perfil descartável, não mudanças dos defaults do aplicativo. O ambiente repassado ao app contém somente variáveis de sistema necessárias e os caminhos/endpoints do teste. Nenhum secret ou Keychain foi acessado, e os processos e diretórios temporários do teste foram removidos. O artifact inclui capturas de onboarding, terminal/editor e reabertura, sem logs brutos ou ambiente do runner.
+
+As execuções exploratórias revelaram limites do teste: SIGTERM não acionou o handler Node no app macOS observado; o encerramento aprovado usa Apple Events, que exercitam o quit nativo. O primeiro seletor do Monaco esperava textarea, mas a versão instalada habilita EditContext nativo no Chromium atual; o teste passou a selecionar a superfície de entrada ativa. Em uma execução com o Bash do runner, o terminal permaneceu sem saída durante 45 segundos; outras execuções Bash passaram. Esse resultado permanece inconclusivo, sem declaração de correção do Bash ou dos sinais POSIX.
+
+**Limites:** este smoke comprova execução do pacote macOS arm64 no runner, não no M5 físico. Finder/Dock, quarentena/Gatekeeper após download pelo navegador, SSH, coexistência instalada com Wave, Keychain e atualização assinada N → N+1 continuam sem aceite. A extração via Actions não reproduz a quarentena do download no Mac do usuário.
+
+## Desenvolvimento Linux x64
 
 Executado em 2026-10-04 no host Linux x64 com Xvfb, Electron 41.1.0, `dist/main`, `dist/frontend` e os binários locais `wavesrv.x64` e `wsh-0.14.5-linux.x64`. Este teste usa a versão de desenvolvimento (`app.isPackaged === false`); não valida macOS, pacote instalado ou atualização real.
 
