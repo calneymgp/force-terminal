@@ -26,6 +26,10 @@ Direcionamento posterior: canal `community` padrão pelo GitHub, seguindo a expe
 
 O [build 37224909810](https://github.com/calneymgp/force-terminal/actions/runs/37224909810) passou com a correção das páginas iniciais Force. O [smoke 37225675703](https://github.com/calneymgp/force-terminal/actions/runs/37225675703) aprovou abertura, Zsh, arquivos por RPC, editor visual/Cmd+S, quit nativo e persistência na reabertura do app extraído desse DMG. O instalador no link Tailscale foi substituído por esse pacote: **201174686 bytes**, SHA-256 `b9ea8cb16e88c162328c1a1161b852a9e20079ac2f046c644e1fa402faee327e`. A versão continua 0.14.5, ad hoc e sem updater; não houve publicação de release. Detalhes e limites em [RUNTIME-REPORT.md](RUNTIME-REPORT.md).
 
+## Revisão com boas-vindas simplificadas
+
+O [build 37241487184](https://github.com/calneymgp/force-terminal/actions/runs/37241487184), fonte `81da701bdd5769f9bc9a5af323d7522f20eaec21`, passou todos os gates e gerou o pacote com somente o primeiro popup. O [smoke 37242225109](https://github.com/calneymgp/force-terminal/actions/runs/37242225109) aprovou sete verificações, incluindo Continue direto ao app e reabertura sem onboarding. Esse DMG substituiu o instalador no mesmo botão Tailscale: **201180258 bytes**, SHA-256 `5c8fb9ddf3b01c90a961e5272065462ca0b04f3093f4ed55e168432f520e4498`. Manifesto, página/botão, HTTP 200 e range 206 foram conferidos no servidor. A versão permanece 0.14.5 ad hoc, sem publicação de release ou atualização automática.
+
 ## Pendências de execução
 
 - Build/empacotamento macOS arm64 em runner: concluído conforme execução acima. Instalação e abertura no M5: pendentes.

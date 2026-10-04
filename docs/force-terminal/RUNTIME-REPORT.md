@@ -19,6 +19,12 @@ As execuções exploratórias revelaram limites do teste: SIGTERM não acionou o
 
 **Limites:** este smoke comprova execução do pacote macOS arm64 no runner, não no M5 físico. Finder/Dock, quarentena/Gatekeeper após download pelo navegador, SSH, coexistência instalada com Wave, Keychain e atualização assinada N → N+1 continuam sem aceite. A extração via Actions não reproduz a quarentena do download no Mac do usuário.
 
+## Boas-vindas simplificadas: pacote aprovado
+
+O [build 37241487184](https://github.com/calneymgp/force-terminal/actions/runs/37241487184), fonte `81da701bdd5769f9bc9a5af323d7522f20eaec21`, preserva o primeiro popup e encerra a introdução após Continue. O [smoke 37242225109](https://github.com/calneymgp/force-terminal/actions/runs/37242225109) reutilizou esse DMG e registrou `passed: true` para sete verificações: perfil/renderer/updater isolado, único popup com entrada direta, comando local com saída distinta, leitura/escrita, editor/Cmd+S, quit nativo e persistência na reabertura. A reabertura também confirmou ausência de modal de onboarding. Os limites do teste macOS descritos acima continuam aplicáveis.
+
+Na primeira execução dessa revisão, o [smoke 37241963137](https://github.com/calneymgp/force-terminal/actions/runs/37241963137) confirmou o único popup, mas expirou esperando texto inicial no terminal; o controlador estava `running`. O teste passou a aguardar a montagem do terminal e comprovar prontidão pela saída de um comando, sem exigir texto do prompt. A segunda execução passou com o mesmo aplicativo, sem mudança no shell ou no pacote. A tentativa inicial não comprova uma correção no startup do Zsh.
+
 ## Desenvolvimento Linux x64
 
 Executado em 2026-10-04 no host Linux x64 com Xvfb, Electron 41.1.0, `dist/main`, `dist/frontend` e os binários locais `wavesrv.x64` e `wsh-0.14.5-linux.x64`. Este teste usa a versão de desenvolvimento (`app.isPackaged === false`); não valida macOS, pacote instalado ou atualização real.
