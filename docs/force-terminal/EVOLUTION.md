@@ -1,6 +1,6 @@
 # Force Terminal: evolução e estado do produto
 
-Análise do compilado de ideias fornecido pelo usuário e do checkout `bc6de9a138dfe8d37f53c46d2f05ff3594d74a2e` do Wave. Atualizada em 4 de outubro de 2026. Esta página registra o estado do rebranding e as próximas etapas; recursos ainda não implementados permanecem como requisitos ou propostas, conforme indicado abaixo.
+Análise do compilado de ideias fornecido pelo usuário e do checkout `bc6de9a138dfe8d37f53c46d2f05ff3594d74a2e` do Wave. Atualizada em 4 de outubro de 2026, incluindo a direção Agent-first e a retomada após desligar o notebook. Esta página distingue o que entrou no aplicativo instalado das próximas entregas; requisitos de projetos, agentes e retomada ainda não estão implementados.
 
 ## Estado em 4 de outubro de 2026
 
@@ -11,43 +11,55 @@ Análise do compilado de ideias fornecido pelo usuário e do checkout `bc6de9a13
 - **Distribuição pelo GitHub:** seguir o modelo do tamz-bot, mantendo Electron. Tags usam o modo `community` com certificado próprio estável e sem notarização; `official` com Developer ID/notarização fica opcional. Execução manual gera artefatos ad hoc sem updater. A release só é publicada após conferir pacotes e hashes. Nenhuma release Force foi publicada nesta implementação.
 - **Validação disponível:** build de produção e TypeScript completo passaram; os mocks preexistentes foram corrigidos. Testes de perfis, updater, guardas, persistência e validadores de release passaram. Evidências e limitações estão nos relatórios ligados abaixo.
 - **Smoke adicional:** um secret fictício foi recuperado após salvar, fechar imediatamente e reabrir no Linux. O teste utilizou um bootstrap temporário com `basic_text`, sem alterar a criptografia do produto; Keychain macOS segue sem aceite.
-- **DMG de teste entregue:** [build macOS arm64 no GitHub aprovado](https://github.com/calneymgp/force-terminal/actions/runs/37221443395), versão 0.14.5. O DMG foi validado e disponibilizado em página HTML privada na rede Tailscale; não foram criados certificados/secrets ou publicados releases estáveis. A instalação no M5 continua pendente de confirmação do usuário.
+- **DMG de teste entregue e instalado:** versão 0.14.5, disponibilizada em página HTML privada na rede Tailscale. O usuário confirmou instalação e abertura no notebook, com o símbolo Force nas boas-vindas. Isso confirma esse fluxo inicial; terminal, SSH, coexistência com Wave e demais superfícies da marca ainda precisam de aceite no aparelho. Não foram criados certificados/secrets ou publicados releases estáveis.
 - **Pacote macOS executado:** o [build atualizado 37224909810](https://github.com/calneymgp/force-terminal/actions/runs/37224909810) corrigiu as páginas iniciais para o fork Force e substituiu o DMG no link privado. O [smoke 37225675703](https://github.com/calneymgp/force-terminal/actions/runs/37225675703) aprovou abertura, comando Zsh, leitura/escrita, editor visual/Cmd+S, encerramento nativo e persistência ao reabrir. Esses testes usam perfil descartável no runner macOS; não substituem os aceites no M5, SSH, coexistência, Keychain ou atualização assinada.
 - **Pendente para distribuição com updater:** configurar o certificado próprio Force no CI e gerar pacotes com essa identidade estável; executar smoke e conferir a marca no MacBook M5; validar coexistência com Wave, SSH e secrets/Keychain; comprovar uma atualização instalada de N para N+1. O DMG ad hoc já foi entregue e não exige essa configuração. Conta Apple Developer não é requisito do canal `community`.
-- **Pendente para a primeira versão:** tarefas e notas persistentes, vínculo entre tarefa e execução e teste do ciclo de atualização com esses domínios quando existirem.
+- **Prévia visual independente:** o [pitch animado de boas-vindas](../../assets/force-terminal/onboarding-pitch/index.html) foi publicado como HTML no Tailscale. Mostra uma proposta de direção, agentes/sessões, tarefas e rotinas; ainda não está incorporado ao DMG nem implementa esses recursos.
+- **Pendente para a primeira versão Agent-first:** projetos locais/SSH, perfis de agentes com título/ícone/system prompt, agentes vinculados a projetos e persistência da sessão lógica com ação **Reconectar agente**. Tarefas e notas ficam vinculadas a esse trabalho; sua existência não será requisito para iniciar um agente.
+
+**Por que o aplicativo ainda se parece com o Wave:** o DMG atual entrega a marca Force, o perfil de dados isolado e correções de persistência/encerramento, além da base de distribuição. Terminal, abas, workspaces, SSH e editor ainda usam a experiência herdada. O código do updater está preparado, mas o pacote ad hoc desativa a atualização pelo feed. Projetos, cadastro de agentes, gestão de tarefas/notas, rotinas e retomada de conversa após desligamento ainda são entregas futuras. A prévia animada não altera o aplicativo instalado.
 
 Os nomes internos de variáveis de transporte, protocolos e binários `wavesrv`/`wsh` foram preservados; seus caminhos operacionais agora são Force. O instalador de teste foi entregue; o aceite de atualização depende de pacotes com assinatura estável e do ciclo instalado real, sem publicação na App Store. Consulte [plano aprovado](FOUNDATION-PLAN.md), [roteiro macOS](MACOS.md), [isolamento](ISOLATION-REPORT.md), [updater](UPDATES-REPORT.md), [pipeline](RELEASE-REPORT.md), [modelo tamz-bot](DISTRIBUTION.md) e [revisão](FOUNDATION-REVIEW.md).
 
 O [quadro de aceites](ACCEPTANCE-AUDIT.md) separa código e testes disponíveis das provas ainda necessárias no M5 e no GitHub. Na conferência remota inicial, o fork ainda não tinha workflows, execuções ou releases e os cinco secrets Apple estavam ausentes; essa ausência não impede preparar o canal `community`. O código agora está em `main` e o build de teste foi aprovado; nenhuma release estável foi publicada.
 
-## Direção recomendada
+## Direção confirmada: Agent-first
 
-Construir um ambiente simples para conduzir trabalho com agentes: **projetos, tarefas, notas e execuções visíveis**. Preservar a infraestrutura de terminal, SSH, arquivos e transporte do Wave. O primeiro diferencial deve ser conseguir responder: “o que este agente está fazendo, para qual tarefa, o que precisa de mim e como retomo esse trabalho?”.
+Construir um ambiente para conduzir trabalho com agentes a partir de **projetos e agentes persistentes**. O caso de uso principal é trabalhar em **três projetos simultâneos**, locais ou por SSH, com vários agentes em cada um — por exemplo DevOps, ETL de dados e Marketing. Preservar a infraestrutura de terminal, SSH, arquivos e transporte do Wave. O primeiro diferencial deve responder: “em qual projeto este agente trabalha, qual é seu papel, o que precisa de mim e como reconecto ao mesmo trabalho?”.
 
-Assumimos inicialmente Claude/Codex executados como CLIs no terminal. O chat embutido continua disponível como ferramenta auxiliar. A escolha de qual CLI integrar primeiro depende do uso cotidiano; o modelo de tarefas e notas não deve depender dessa escolha.
+Assumimos inicialmente agentes executados como CLIs no terminal, começando por um adaptador compatível com o uso cotidiano. A organização de projetos, perfis e instâncias não deve depender de um único fornecedor. O chat embutido continua disponível como ferramenta auxiliar.
 
-Ser agent-first significa dar identidade ao agente, relacionar sua execução ao objetivo e apresentar pedidos de atenção. Abrir uma PTY ou manter um processo vivo, por si só, não oferece isso. A estrutura proposta é:
+Na experiência principal, selecionar um projeto e clicar em **Novo agente** substitui começar por “Novo terminal”. O usuário escolhe um perfil e o Force prepara o destino, diretório e CLI. O terminal é a superfície de execução daquele agente; sua identidade permanece mesmo quando o processo termina. A estrutura de navegação será:
 
 ```text
-Projeto
-  Tarefa — objetivo, estado, notas e histórico
-    Agente — perfil de execução e capacidades disponíveis
-    Execuções — tentativas e retomadas ao longo do tempo
-      Terminal / arquivos / saída / conexão / sessão do CLI
+Projeto — raiz local ou conexão SSH + raiz remota
+  Agente no projeto — identidade persistente, derivada de um perfil
+    Sessão lógica — contexto e identificador da conversa do CLI
+    Execuções e retomadas — processos, terminais e jobs ao longo do tempo
+    Tarefas e notas — objetivos, decisões e referências desse trabalho
+
+Perfis de agente — biblioteca reutilizável de papéis
+  Título / ícone / system prompt / adaptador CLI / configuração
 ```
 
-Uma tarefa pode existir sem agente nem repositório. Pode acumular várias execuções; no MVP, terá no máximo uma execução ativa. Fechar um bloco de terminal não deve apagar a tarefa nem suas notas.
+**Projeto:** nome, ícone opcional e destino de trabalho. Um projeto local aponta para uma pasta; um remoto aponta para uma conexão SSH e um diretório naquele host. Não precisa ser um repositório Git. O destino e o diretório ficam claros ao criar ou reconectar o agente.
+
+**Perfil:** título, ícone e system prompt, além do CLI/adaptador e opções necessárias para iniciá-lo. Exemplos: DevOps, ETL de dados e Marketing. Um perfil pode ser reutilizado nos três projetos. O adaptador precisa confirmar como aplica o system prompt; não tratar comandos ou flags não suportados como uma integração pronta.
+
+**Agente no projeto:** uma instância persistente com ID próprio, perfil/configuração versionados, projeto, sessão do CLI, terminal lógico, última atividade e estado de conexão. Usar o perfil DevOps em dois projetos cria duas instâncias com contextos distintos. Alterar o perfil não deve mudar silenciosamente a configuração de uma conversa já iniciada.
+
+**Execução:** cada início, reconexão ou retomada mantém sua referência ao agente. No MVP, cada instância terá no máximo uma execução ativa; um projeto pode ter vários agentes ativos. Fechar um bloco de terminal não apaga o agente, sua sessão lógica, tarefas ou notas. Tarefas podem existir sem agente e ser atribuídas depois; criar uma tarefa não é pré-requisito para **Novo agente**.
 
 ## O que faz sentido no compilado
 
 - **Preservar o Wave como base.** Evita reimplementar renderer, integração de shell, SSH, editor, acesso a arquivos e reconexão.
-- **Persistência lógica separada da execução.** Objetivo, notas, agente escolhido e referências de execução precisam sobreviver ao fechamento do aplicativo e ao fim do processo.
-- **Tarefas e scratchpad compartilhado.** Entregam valor diário mesmo antes de existir integração avançada com os CLIs.
+- **Persistência lógica separada da execução.** Projetos, perfis, instâncias de agentes, sessões do CLI, objetivos e notas precisam sobreviver ao fechamento do aplicativo e ao fim do processo.
+- **Tarefas e scratchpad ligados ao agente/projeto.** Organizam o trabalho sem obrigar o usuário a criar uma tarefa antes de iniciar um agente.
 - **“Precisa de você”.** É uma boa organização da atenção humana; pode começar como um filtro de tarefas com contador.
 - **Adaptadores por agente.** Permitem integrar capacidades verificadas de cada CLI sem espalhar regras específicas por toda a interface.
 - **Worktrees para execuções concorrentes que alteram código.** O isolamento faz sentido nessa situação, sem obrigar notas, consultas e tarefas sem código a criar worktrees.
 
-O compilado contém uma tensão: começa propondo tarefas como fundamento, termina propondo o supervisor como primeira entrega e inclui cron/PR automático no MVP. Recomendo resolver isso começando pela organização do trabalho e pela observação das execuções. Recuperação automática e automações dependem dessa base.
+O compilado inicial priorizava tarefas como fundamento; a escolha posterior do usuário coloca projetos e agentes na entrada principal. A ordem passa a ser: cadastrar projetos/perfis → iniciar agentes no projeto → reconectar ao mesmo trabalho → enriquecer com tarefas/notas e rotinas. Retomada manual básica faz parte dessa primeira experiência; watchdog, recuperação automática e delegação avançada continuam posteriores.
 
 ## Prioridade de implementação
 
@@ -55,38 +67,67 @@ Os esforços abaixo são relativos, não estimativas de calendário. A comparaç
 
 | Ordem | Entrega | Estado e escopo inicial | Esforço | Critério para considerar pronta |
 |---|---|---|---|---|
-| 0 | Ambiente e referência funcional | **Build completo macOS CI aprovado e DMG de teste entregue; aceite M5 pendente:** comandos completos, perfil temporário e roteiro disponíveis | Pequeno a médio | Aplicativo abre no M5 e os fluxos essenciais funcionam em perfil Force isolado |
-| 1a | Identidade Force Terminal | **Marca aplicada; conferência do pacote M5 pendente:** UI, ícones, metadados e destino GitHub Force configurados | Pequeno a médio | Marca aprovada conferida no Finder, Dock, aplicativo e instalador |
+| 0 | Ambiente e referência funcional | **Build macOS aprovado; usuário confirmou instalação/abertura:** demais fluxos M5 pendentes; comandos completos, perfil temporário e roteiro disponíveis | Pequeno a médio | Terminal, SSH, arquivos e reabertura funcionam no M5 em perfil Force isolado |
+| 1a | Identidade Force Terminal | **Marca aplicada e vista nas boas-vindas instaladas:** demais superfícies M5 pendentes | Pequeno a médio | Marca aprovada conferida no Finder, Dock, aplicativo e instalador |
 | 1b | Distribuição e atualizações Force | **Código implementado; aceite pendente:** isolamento, updater com guardas e pipeline macOS arm64; falta configurar certificado próprio, gerar pacote e testar atualização instalada real | Médio | Versão assinada N atualiza para N+1 somente pelo feed Force, preserva dados e adia quando há trabalho em risco; Wave permanece intacto |
-| 2 | Tarefas e notas persistentes | Título, objetivo, estado manual, notas Markdown; projeto e agente opcionais; lista de tarefas | Médio | Criar uma tarefa, escrever notas, fechar/reabrir o aplicativo e recuperar ambos |
-| 3 | Vincular tarefa à execução | Associar ou abrir um bloco existente; mostrar terminal, arquivos e referências úteis dentro da tarefa | Médio | Retomar o trabalho pela tarefa sem procurar uma aba pelo nome do processo |
-| 4 | Estados observáveis e “Precisa de você” | Informar execução ativa, encerramento, falha, desconexão e pedido de ação confirmado; contador/filtro de atenção | Médio | Cada estado tem uma fonte identificável e uma desconexão não é confundida com conclusão |
-| 5 | Primeiro adaptador de agente | Um CLI por vez: iniciar no diretório escolhido, associar identificador de sessão quando disponível, receber eventos e oferecer retomada compatível | Médio a grande | Reiniciar o app permite localizar a execução ou oferecer uma retomada explícita sem duplicá-la |
-| 6 | Isolamento Git e links GitHub | Worktree opcional para tarefas que modificam código; branch/diff visíveis; referências de issue/PR | Médio | Duas tarefas concorrentes usam checkouts separados e o usuário consegue revisar o resultado |
-| 7 | Automação com um caso validado | Primeiro um comando manual repetível; depois agendamento simples com registros e pausa | Grande | Execuções não se sobrepõem por acidente, falhas ficam visíveis e efeitos externos têm política explícita |
-| 8 | Recuperação avançada e colaboração entre agentes | Watchdog específico por CLI, retomada após falha, handoff e delegação | Grande | Recuperação testada em falhas reais, sem perder contexto nem repetir efeitos |
+| 2 | Projetos e perfis de agentes persistentes | Cadastro de projetos locais/SSH e biblioteca de agentes com título, ícone, system prompt e adaptador | Médio | Manter três projetos, reutilizar perfis DevOps/ETL/Marketing e recuperar os cadastros ao reabrir |
+| 3 | Novo agente dentro do projeto | Primeiro adaptador CLI: aplicar perfil, iniciar no destino/diretório correto e persistir instância, sessão lógica e identificador do CLI | Médio a grande | Iniciar vários agentes nos projetos pelo botão Novo agente, com contextos separados e sem criar uma tarefa antes |
+| 4 | Reconectar agente após fechar/desligar | Reanexar job vivo ou retomar a sessão do CLI em novo processo; restaurar host, diretório, perfil e terminal lógico | Grande | Após desligar/religar o notebook, um clique recupera o mesmo trabalho e a mesma sessão quando suportada; falhas não criam duplicatas ou uma conversa nova silenciosamente |
+| 5 | Tarefas e notas do projeto/agente | Título, objetivo, estado manual e Markdown, relacionados ao agente e às suas execuções quando necessário | Médio | Criar tarefa/nota, fechar/reabrir e recuperá-las no mesmo projeto/agente |
+| 6 | Estados observáveis e “Precisa de você” | Execução ativa, encerramento, falha, desconexão, retomada disponível e pedido de ação confirmado; filtro de atenção | Médio | Cada estado tem uma fonte identificável; desconexão não é conclusão e silêncio não é travamento |
+| 7 | Isolamento Git e links GitHub | Ampliar isolamento de escrita, worktrees e revisão de branch/diff; referências de issue/PR | Médio | Agentes de código concorrentes usam checkouts separados e o resultado pode ser revisado; a proteção básica de concorrência já se aplica ao iniciar agentes |
+| 8 | Rotinas com um caso validado | Associar rotina a projeto/perfil; primeiro ação manual repetível, depois agendamento com registros e pausa | Grande | A rotina usa o destino e agente definidos, não se sobrepõe por acidente e deixa falhas visíveis |
+| 9 | Recuperação avançada e orquestração | Watchdog por CLI, retomada automática configurada, handoff e delegação entre agentes | Grande | Recuperação e colaboração testadas em falhas reais, sem perder contexto nem repetir efeitos |
 
-**A primeira versão distribuída deve completar as prioridades 1b–3, com a identidade 1a já aplicada:** atualizações Force, tarefas/notas e uma execução vinculada. O atualizador é parte do lançamento inicial, não uma etapa condicionada a um futuro canal de distribuição. Pode funcionar com o CLI iniciado manualmente e estados manuais. A prioridade 4 melhora a atenção; a 5 torna a integração mais profunda. Cron, supervisor e integração de tarefas com issues/PRs do GitHub podem esperar; GitHub Releases faz parte da distribuição inicial.
+**A primeira entrega que muda o uso cotidiano deve completar 2–4:** projetos, perfis, Novo agente e Reconectar agente, com um CLI integrado e retomada comprovada. O fechamento de 1b continua necessário para distribuir com atualização instalada, mas a configuração de assinatura não precisa bloquear o desenvolvimento Agent-first nem novos pacotes de teste. Tarefas/notas vêm na prioridade 5; rotinas, supervisor e orquestração avançada ficam posteriores. A alteração visual das boas-vindas pode acompanhar essa entrega, apresentando apenas capacidades realmente disponíveis.
+
+### Persistência e “Reconectar agente”
+
+**Requisito confirmado pelo usuário, ainda não implementado:** desligar o notebook, voltar ao Force e clicar em **Reconectar agente** para abrir o mesmo trabalho: projeto, diretório, conexão SSH quando existir, perfil do agente e conversa anterior do CLI. Restaurar abas ou reabrir uma shell sem contexto não encerra este item.
+
+Persistir continuamente no armazenamento Force, sem depender apenas de um fechamento limpo: IDs do projeto/instância/terminal lógico, referência e versão do perfil, destino local ou conexão SSH, diretório atual confirmado pela integração de shell, CLI/adaptador/versão, identificador de sessão do CLI, referências de job/execução e última atualização confirmada. Se o diretório atual não puder ser observado, guardar a raiz configurada e identificar a limitação; não adivinhar o caminho. Referenciar as credenciais no mecanismo existente, sem copiá-las para esse registro. Preservar também tarefas/notas e o histórico visual persistido quando disponível, sem usar o texto do terminal como substituto da conversa do agente.
+
+O terminal lógico conserva sua identidade, vínculo ao agente e localização na interface. Se for necessário recriar uma PTY, ela ocupa esse mesmo espaço e registra uma nova execução vinculada à sessão; não vira um agente sem relação com o anterior.
+
+Ao clicar em **Reconectar agente**:
+
+1. Carregar o projeto, a instância e o último destino/diretório confirmado; restabelecer a conexão local/SSH e validar que o diretório existe.
+2. Se o backend/helper confirmar que o job anterior está vivo e pertence à instância, reanexar esse job e seu terminal, sem iniciar outro agente.
+3. Se o processo terminou, consultar o adaptador sobre a sessão gravada. Quando suportado, iniciar um novo processo no mesmo destino/diretório e retomar o **identificador exato da conversa**. Um comando semelhante a `--resume` só será usado conforme a API/versão verificada do CLI; não escolher automaticamente a “última conversa” de um host compartilhado.
+4. Conferir a retomada e atualizar o estado. Cliques repetidos, múltiplas janelas ou uma conexão em curso não podem criar processos/sessões duplicados.
+5. Se o CLI não suporta retomada, o histórico desapareceu ou o destino está indisponível, manter o agente e seu contexto registrados, indicar a causa e permitir tentar novamente. **Nova sessão** é uma ação explícita; falha de retomada não deve abrir uma conversa vazia como se fosse a anterior.
+
+O system prompt e as opções efetivas da sessão ficam versionados. A retomada usa a configuração compatível com a conversa anterior; aplicar um perfil editado ou um prompt diferente requer uma escolha explícita e suporte confirmado do adaptador. Não prometer persistência de estado interno que o CLI não oferece.
+
+| Situação | Comportamento esperado |
+|---|---|
+| Fechar e reabrir o Force | Recuperar catálogo, instâncias e referências; reconectar job confirmado vivo ou oferecer retomada do CLI |
+| Desligar/religar o notebook | Recuperar identidade e contexto persistidos; o processo local terminou e poderá ser recriado para retomar a mesma conversa, conforme suporte do CLI |
+| Notebook desligado, job SSH ainda vivo no servidor | Reconectar ao mesmo host/diretório e reanexar o mesmo job confirmado, sem duplicá-lo |
+| Servidor SSH reiniciou ou job foi perdido | Registrar a perda do processo; retomar a conversa do CLI se seu histórico/identificador continuarem válidos no host |
+| CLI sem suporte a retomada ou histórico ausente | Preservar o registro do agente; mostrar a limitação e oferecer nova sessão separadamente |
+
+**Aceites obrigatórios:** manter três projetos simultâneos, com uma combinação local/SSH e vários agentes DevOps/ETL/Marketing; confirmar que hosts, diretórios, perfis e conversas não se misturam. Testar fechamento/reabertura, desligamento real do notebook, queda de rede, job remoto ainda vivo e reinício do host remoto. Para cada retomada suportada, comprovar o mesmo ID de instância e de sessão do CLI, contexto anterior acessível e ausência de execução duplicada. Dados salvos devem sobreviver também a encerramento abrupto, até o último checkpoint confirmado; restaurar scrollback isoladamente não comprova retomada da conversa.
 
 ### Atualização do aplicativo na primeira versão
 
 O Force Terminal tem um botão permanente de atualização na topbar. Em builds publicados `community` ou `official`, ao abrir o app consulta o feed de metadados e repete a consulta por padrão a cada **10 minutos** (`600000` ms); o botão também permite consultar manualmente, mesmo com consultas automáticas desativadas. Consultas automáticas não baixam nem instalam arquivos. Ao clicar em “Atualizar”, o app faz uma consulta imediata; se não houver versão nova, mostra que está atualizado. Se houver, baixa e prepara instalação/reinício como consequência desse clique, sem segunda confirmação quando não há bloqueios. A interface representa consulta, disponibilidade, progresso, preparação, reinício, erro e estado atualizado. Builds dev/ad hoc não consultam nem aplicam o feed publicado.
 
-O código define `autoDownload = false` e `autoInstallOnAppQuit = false`; downloads automáticos e instalação incidental ao fechar o app ficam desativados. O clique autoriza o ciclo, mas não a interrupção silenciosa de trabalho. A preparação congela entradas temporariamente, aguarda salvamentos, consulta todos os controllers/jobs e exige flush confirmado pelo backend. Comando ativo, terminal sem confirmação atual, falha de salvamento, timeout de renderer ou mudança das views mantém o pacote pronto com reinício adiado. Uma nova tentativa reavalia os bloqueios. Tarefas/notas futuras deverão participar desta guarda de persistência.
+O código define `autoDownload = false` e `autoInstallOnAppQuit = false`; downloads automáticos e instalação incidental ao fechar o app ficam desativados. O clique autoriza o ciclo, mas não a interrupção silenciosa de trabalho. A preparação congela entradas temporariamente, aguarda salvamentos, consulta todos os controllers/jobs e exige flush confirmado pelo backend. Comando ativo, terminal sem confirmação atual, falha de salvamento, timeout de renderer ou mudança das views mantém o pacote pronto com reinício adiado. Uma nova tentativa reavalia os bloqueios. Projetos, perfis, instâncias/sessões de agentes e tarefas/notas deverão participar desta guarda de persistência quando forem implementados.
 
 O pipeline implementado usa um runner macOS arm64 para publicar por versão os pacotes e metadados em **GitHub Releases de `calneymgp/force-terminal`**, usando o provider GitHub do updater. O fluxo é: tag/versionamento → build e verificações → `task force:package:mac-arm64` → envio dos artefatos e metadados para draft → validação remota → publicação automática da release completa. Releases em preparação ficam como draft até todos os arquivos necessários estarem disponíveis; o usuário consulta apenas versões publicadas. Credenciais ficam nos secrets do CI, sem distribuir tokens de publicação no aplicativo. Releases e metadados Wave nunca são usados pelo Force. A configuração segue o mecanismo de publicação e atualização do [electron-builder](https://www.electron.build/docs/features/auto-update/), respeitando a versão usada pelo projeto.
 
 O updater valida o provider GitHub e o repositório Force antes de consultar. Os defaults são `autoupdate:enabled=true`, `installonquit=false` e `intervalms=600000`. As tarefas de publicação S3/Snap/Winget e o workflow de versionamento dependente da aplicação Wave foram removidos do caminho de distribuição. O pipeline inicial é macOS arm64: `task force:package:mac-arm64` gera DMG/ZIP e o CI valida manifestos, hashes e assets remotos antes de publicar. Windows, Linux e Mac Intel ficam fora deste aceite inicial. Assinatura própria estável e atualização instalada real continuam pendentes; notarização só é exigida no modo opcional `official`. Um build/teste em Linux não comprova esses aceites.
 
-Atualizar o binário não pode apagar tarefas, notas ou seus metadados; após o reinício, esses dados devem continuar disponíveis. Uma sessão de terminal só pode ser recuperada se a infraestrutura existente confirmar que continua recuperável. O produto não deve prometer que processos locais sobreviverão ao reinício do aplicativo, nem aprovar automaticamente prompts de CLI para efetuar uma atualização.
+Atualizar o binário não pode apagar projetos, perfis, instâncias, identificadores de sessão do CLI, tarefas ou notas; após o reinício, esses dados devem continuar disponíveis. A ação Reconectar agente segue o fluxo de retomada acima: reanexar processo confirmado vivo ou retomar a conversa por um adaptador compatível. O produto não deve prometer que processos locais sobreviverão ao reinício do aplicativo, nem aprovar automaticamente prompts de CLI para efetuar uma atualização.
 
-Critérios de aceite do fluxo: testar uma atualização real de uma versão empacotada para outra (sem download até clique, progresso, validação do artefato, instalação e reinício na nova versão), ausência de atualização (incluindo consulta manual), erro de rede com opção de tentar novamente e preservação de tarefas/notas depois da instalação. A consulta periódica não deve iniciar operações sobrepostas nem exibir avisos repetidos quando não houver mudança. Erros de download/verificação mantêm a versão instalada funcionando e não disparam a instalação. A retomada de uma sessão deve ser oferecida somente quando confirmada como recuperável.
+Critérios de aceite do fluxo: testar uma atualização real de uma versão empacotada para outra (sem download até clique, progresso, validação do artefato, instalação e reinício na nova versão), ausência de atualização (incluindo consulta manual), erro de rede com opção de tentar novamente e preservação do catálogo de projetos/agentes, referências de sessão e tarefas/notas depois da instalação, conforme esses domínios forem entregues. A consulta periódica não deve iniciar operações sobrepostas nem exibir avisos repetidos quando não houver mudança. Erros de download/verificação mantêm a versão instalada funcionando e não disparam a instalação. A interface deve distinguir retomar a mesma conversa de criar uma sessão nova.
 
-## Como simplificar tarefas, notas e navegação
+## Como organizar agentes, tarefas, notas e navegação
 
 ### Tarefas
 
-Começar com título, objetivo, projeto/diretório opcional, agente escolhido, estado e última atualização. Oferecer os estados da tarefa **A fazer, Em andamento, Precisa de você e Concluída**, inicialmente controlados pelo usuário. Arquivar é uma ação separada.
+Começar com título, objetivo, projeto/instância de agente opcionais, estado e última atualização. Oferecer os estados da tarefa **A fazer, Em andamento, Precisa de você e Concluída**, inicialmente controlados pelo usuário. Arquivar é uma ação separada. Tarefas enriquecem o trabalho iniciado pelo agente; não são a entrada obrigatória nem a identidade da sessão.
 
 Os estados da execução são outro dado: processo ativo, encerrado, falhou, desconectado ou desconhecido. Um exit code zero indica que o processo terminou sem erro informado; não comprova que o objetivo da tarefa foi cumprido. Um evento do agente pode sugerir “pronta para revisão”; a conclusão da tarefa continua explícita.
 
@@ -102,7 +143,11 @@ Uma tarefa pessoal pode conter apenas notas. Uma biblioteca independente de nota
 
 ### Navegação
 
-Entrada principal com projetos e tarefas agrupadas em **A fazer, Em andamento, Precisa de você e Concluídas**. Exibir agente, quando escolhido, e última atividade em cada tarefa. Ao abrir uma tarefa, mostrar objetivo, terminal e notas; arquivos permanecem acessíveis no mesmo espaço de trabalho.
+Entrada principal com **projetos e seus agentes**. Permitir alternar entre três ou mais projetos sem perder os agentes dos demais; cada item mostra o destino local/SSH e os agentes vinculados com título, ícone, estado e última atividade. Um painel de perfis permite cadastrar e reutilizar DevOps, ETL de dados, Marketing e outros papéis.
+
+Ao selecionar um projeto, a ação principal é **Novo agente**. Ao selecionar um agente já existente e desconectado, a ação principal é **Reconectar agente**. Abrir o agente mostra seu terminal lógico, arquivos, contexto e tarefas/notas vinculadas. Iniciar, reconectar, encerrar execução e arquivar a instância são ações distintas; encerrar um processo não remove o agente do projeto.
+
+O filtro **Precisa de você** pode reunir agentes e tarefas com um pedido confirmado. Estados de tarefas continuam disponíveis em sua própria lista. Um terminal avulso permanece como ferramenta secundária para comandos manuais, sem exigir que todo terminal tenha um perfil de agente.
 
 Reutilizar os blocos, abas e layouts como mecanismo interno. Evitar reconstruir o layout completo ou criar um canvas. Um painel separado de Inbox só será necessário quando o filtro “Precisa de você” deixar de atender ao volume.
 
@@ -111,9 +156,9 @@ Reutilizar os blocos, abas e layouts como mecanismo interno. Evitar reconstruir 
 | Elemento atual | Decisão | Motivo |
 |---|---|---|
 | Terminal, renderer, integração de shell, SSH e helper remoto | Preservar | São a infraestrutura de execução e acesso remoto |
-| Blocos, abas, workspaces e layout | Adaptar a navegação | Permitem compor terminal/notas/arquivos sem criar outro sistema de janelas |
+| Blocos, abas, workspaces e layout | Adaptar para projetos e agentes | Novo agente/Reconectar agente são as ações principais; terminal/notas/arquivos continuam compostos pelos mecanismos existentes |
 | Editor, Markdown e preview de arquivos | Reutilizar | A base já oferece edição, salvamento e visualização |
-| RPC, eventos, SQLite e armazenamento de arquivos | Reutilizar com domínio de tarefas próprio | Evita backend e sincronização paralelos; tarefas não devem ser apenas rótulos de processos |
+| RPC, eventos, SQLite e armazenamento de arquivos | Reutilizar com domínios persistentes de projeto, perfil, instância e sessão | Evita backend paralelo; a identidade do agente não pode ser apenas o rótulo ou PID do terminal |
 | Armazenamento de secrets existente | Preservar | Não há motivo para construir um cofre novo no MVP |
 | Nome, logotipo, ícones de marca e mensagens promocionais Wave | Marca Force aplicada | A identidade oficial está integrada; atribuições e serviços externos mantêm a identificação upstream |
 | Feed de atualização e configuração de publicação/distribuição Wave | Updater e pipeline Force implementados; validação de distribuição pendente | Comprovar atualização instalada com pacotes assinados macOS arm64 antes do lançamento |
@@ -133,8 +178,8 @@ Para dados, recomendo uma instalação Force **isolada da instalação Wave**. I
 - **Inferir travamento só por silêncio, CPU baixa ou falta de heartbeat.** Mostrar “sem atualização” ou “estado desconhecido” e abrir o terminal. Espera por aprovação, builds silenciosos e rede interrompida podem produzir os mesmos sinais.
 - **Enviar Enter, Ctrl+C, matar processos ou retomar automaticamente por heurística.** São ações com efeitos no trabalho. Primeiro oferecer controles explícitos e reunir eventos confiáveis por agente.
 - **Exibir porcentagem de progresso, contexto, tokens ou custo inventados.** Mostrar apenas métricas realmente fornecidas pela integração; ausência de dado deve aparecer como indisponível.
-- **Prometer sobreviver a qualquer reboot.** Persistir a tarefa é diferente de preservar o processo. A retomada do CLI depende de identificadores e capacidades confirmados para aquela versão.
-- **Lançar vários agentes no mesmo checkout para alterar código.** Primeiro implementar isolamento ou restringir a concorrência de escrita.
+- **Confundir persistência do agente com sobrevivência do processo.** Retomada após desligar o notebook faz parte do MVP, mas depende do registro persistido e das capacidades confirmadas do CLI. Um PID/PTY local não sobrevive ao desligamento; reconectar deve restaurar a conversa suportada ou explicar a limitação.
+- **Lançar vários agentes no mesmo checkout para alterar código sem isolamento.** Vários agentes por projeto fazem parte do uso principal; para escrita concorrente, usar worktrees/diretórios separados ou restringir a concorrência. Agentes de consulta ou papéis em recursos distintos não precisam criar worktrees por padrão.
 - **Fazer commit, push, PR e merge automáticos como comportamento padrão.** Na primeira etapa, mostrar resultado/diff e oferecer ações explícitas; um workflow automatizado pode ser escolhido depois.
 - **Criar já um scheduler universal.** Cron, GitHub webhooks, eventos de arquivos e delegação exigem tratamento de concorrência, repetição, falhas e autorização. Isso ampliaria demais o MVP.
 - **Implementar todos os adaptadores e funcionalidades de chat ao mesmo tempo.** Começar pelo CLI mais usado e tratar cada capacidade como opcional.
@@ -156,7 +201,7 @@ Para dados, recomendo uma instalação Force **isolada da instalação Wave**. I
 | Metadados, perfis, updater e tarefas próprias usam Force Terminal; o pipeline inicial distribui somente macOS arm64 | `package.json`, `electron-builder.config.cjs`, `emain/force-profile.ts`, `emain/updater.ts`, `Taskfile.yml`, `.github/workflows/build-helper.yml` |
 | Telemetria vem habilitada na configuração padrão | `pkg/wconfig/defaultconfig/settings.json:32` |
 
-O chat store atual examinado é volátil; persistência própria de conversas seria trabalho adicional. Tarefas, notas e histórico de execuções precisam ter sua própria persistência. Importação de dados e capacidades oficiais dos CLIs exigem verificação específica antes de entrar em uma promessa de produto. Os adaptadores devem declarar o que sabem fazer; parsing de terminal, quando inevitável, deve ser identificado como inferência.
+O chat store atual examinado é volátil; persistência própria desse chat seria trabalho adicional e não substitui a retomada da conversa de um CLI. Projetos, perfis, instâncias, referências de sessão, tarefas/notas e histórico de execuções precisam de persistência própria. Importação de dados e capacidades oficiais dos CLIs exigem verificação específica antes de entrar em uma promessa de produto. Os adaptadores devem declarar o que sabem fazer; parsing de terminal, quando inevitável, deve ser identificado como inferência.
 
 ## Identidade aprovada
 
@@ -166,14 +211,14 @@ A identidade oficial é **Raio Lunar**: raio maciço com anel de poeira lunar, e
 
 ## Próxima fatia recomendada
 
-Entrega imediata escolhida pelo usuário: executar o build manual no GitHub, obter o DMG ad hoc e disponibilizá-lo em uma página HTML com botão de download na rede Tailscale. Não criar certificado/configurar secrets nesta entrega. O pacote de teste tem instalação manual e não ativa o updater; o aceite N → N+1 continua para a etapa assinada posterior.
+A entrega do DMG de teste foi concluída e o usuário confirmou instalação/abertura. A prévia animada também foi entregue como HTML independente. A próxima mudança perceptível deve ser a navegação por projetos/agentes e a retomada do trabalho. A escolha de não criar certificado/configurar secrets continua válida; o aceite N → N+1 permanece para a etapa assinada posterior.
 
-1. **Concluir o aceite no M5:** executar o roteiro de [MACOS.md](MACOS.md) com terminal, SSH descartável, arquivos e persistência; conferir marca no pacote e coexistência com Wave, incluindo helpers remotos e Keychain. Os comandos e o isolamento já estão implementados.
-2. **Gerar o primeiro pacote de teste:** executar o workflow manual para obter DMG/ZIP ad hoc e validar a instalação no M5. Esses artefatos não entram no feed oficial.
-3. **Habilitar a distribuição pelo GitHub:** configurar o certificado próprio Force e seu fingerprint, executar o pipeline `community` por tag correspondente à versão e confirmar assinatura, hashes e publicação do conjunto completo. Developer ID/notarização ficam para o canal `official`, se escolhido depois.
-4. **Aprovar a atualização instalada:** instalar N e atualizar para N+1 pelo botão, confirmando persistência e adiamento com comando ativo ou falha de salvamento. Só então encerrar 1b. Tarefas/notas futuras deverão participar da mesma preparação antes do reinício.
-5. **Definir tarefas e notas persistentes:** título, objetivo, estado e nota Markdown como primeiro domínio novo.
-6. **Vincular tarefa à execução:** mostrar terminal e referências úteis a partir da tarefa, com retomada oferecida somente quando confirmada como possível.
-7. **Validar o ciclo da primeira versão:** criar tarefa → iniciar CLI → tomar notas → atualizar pelo botão → reabrir na nova versão → recuperar tarefa e notas. O terminal local atual não garante preservar o processo ao fechar o aplicativo.
+1. **Projetos e biblioteca de perfis:** persistir três projetos locais/SSH e perfis com título, ícone e system prompt; separar perfil reutilizável de instância vinculada ao projeto.
+2. **Novo agente e primeiro adaptador:** criar a instância no projeto selecionado, aplicar a configuração suportada, abrir o terminal no destino/diretório correto e registrar a sessão do CLI assim que seu identificador estiver confirmado. Proteger a concorrência de escrita desde essa etapa.
+3. **Persistência e Reconectar agente:** implementar checkpoints duráveis, reanexação de job vivo e retomada por ID exato; preservar a identidade visual/lógica ao recriar o processo e impedir duplicatas. A falta de suporte deve aparecer de forma clara, com nova sessão como ação separada.
+4. **Validar o fluxo cotidiano:** iniciar agentes DevOps/ETL/Marketing em três projetos → alternar entre eles → fechar/reabrir → desligar/religar o notebook → reconectar à mesma conversa local/remota quando suportada. Testar também SSH sem rede, job remoto vivo e host reiniciado.
+5. **Tarefas/notas e atenção:** vincular objetivos e Markdown ao projeto/agente; oferecer Precisa de você a partir de sinais confirmados. Só depois acrescentar uma primeira rotina repetível/agendada.
 
-Esse ciclo é o teste de valor da primeira versão. A próxima integração deve resolver a fricção encontrada nele, antes de ampliar o produto com automações.
+Em paralelo, concluir os aceites restantes de [MACOS.md](MACOS.md), marca instalada, isolamento/coexistência, SSH e Keychain. Quando a configuração de assinatura for autorizada, habilitar o canal GitHub e comprovar N → N+1, incluindo o flush dos novos domínios e a retomada posterior. Não considerar 1b concluída antes desse teste.
+
+O teste de valor Agent-first é retomar um agente reconhecível no projeto correto e continuar sua conversa, sem procurar uma aba nem iniciar o trabalho novamente. A próxima integração deve resolver a fricção encontrada nesse ciclo antes de ampliar o produto com automações.
