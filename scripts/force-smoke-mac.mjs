@@ -174,8 +174,9 @@ try {
     await until(() => cdp.evaluate('document.body.innerText.includes("Welcome to Force Terminal")'), 'Force onboarding');
     await screenshot(cdp, '01-onboarding.png');
     await clickButton(cdp, 'Continue');
-    await clickButton(cdp, 'Maybe Later');
-    await clickButton(cdp, 'Skip Feature Tour');
+    await until(() => cdp.evaluate('!document.querySelector(".modal-wrapper")'), 'single welcome completed');
+    assert.equal(await cdp.evaluate('document.body.innerText.includes("Telemetry Disabled") || document.body.innerText.includes("Skip Feature Tour")'), false);
+    checked('one welcome popup; Continue opened the application without secondary onboarding');
     await until(() => cdp.evaluate('Boolean(document.querySelector(".xterm-helper-textarea")) && Array.from(document.querySelectorAll(".xterm-rows > div")).some(row => row.textContent.trim())'), 'terminal mount and shell output');
     await cdp.evaluate('document.querySelector(".xterm-helper-textarea").focus();true');
     const suffix = crypto.randomUUID().replaceAll('-', '');
@@ -216,6 +217,8 @@ try {
     await quit(first);
     checked('first normal quit completed backend persistence');
     const second = await launch();
+    await until(() => second.renderer.evaluate('Boolean(document.querySelector(".xterm-helper-textarea"))'), 'reopened terminal');
+    assert.equal(await second.renderer.evaluate('Boolean(document.querySelector(".modal-wrapper"))'), false);
     assert.equal(await second.renderer.evaluate('window.globalStore.get(window.globalAtoms.staticTabId)'), tabId);
     assert.equal(await second.renderer.evaluate(`window.RpcApi.GetMetaCommand(window.TabRpcClient,{oref:${JSON.stringify(`tab:${tabId}`)}}).then(r=>r['force:smoke']===${JSON.stringify(marker)})`), true);
     assert.equal(await second.renderer.evaluate(`window.RpcApi.FileReadCommand(window.TabRpcClient,{info:{path:${JSON.stringify(file)}}}).then(r=>atob(r.data64)==='edited-in-ui\\n')`), true);
