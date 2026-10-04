@@ -1,0 +1,75 @@
+name: Force Terminal DMG de teste
+run-name: DMG macOS arm64 — ${{ inputs.source_ref }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Branch ou commit do Force Terminal
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: force-test-mac-${{ inputs.source_ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 120
+    env:
+      FORCE_RELEASE_MODE: adhoc
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            tsunami/go.sum
+      - name: Confirmar alvo e instalar dependências
+        run: |
+          test "$(uname -m)" = arm64
+          npm ci --no-audit --no-fund
+      - name: Conferir arquivos gerados
+        run: |
+          go run -mod=readonly cmd/generateschema/main-generateschema.go
+          go run -mod=readonly cmd/generatets/main-generatets.go
+          go run -mod=readonly cmd/generatego/main-generatego.go
+          git diff --exit-code -- schema frontend/types/gotypes.d.ts frontend/types/waveevent.d.ts frontend/app/store/services.ts frontend/app/store/wshclientapi.ts pkg/wshrpc/wshclient/wshclient.go pkg/waveobj/metaconsts.go pkg/wconfig/metaconsts.go
+      - name: Validar tipos, updater e distribuição
+        run: |
+          npx tsc --noEmit
+          npx vitest run emain/force-profile.test.ts emain/updater.test.ts frontend/app/store/update-guard.test.ts
+          npm run force:release:test
+      - name: Validar persistência e isolamento Go
+        run: go test -mod=readonly ./pkg/wcloud ./cmd/server ./pkg/updateguard ./pkg/filestore ./pkg/secretstore ./pkg/wstore ./pkg/wshrpc/wshserver ./pkg/wavebase ./pkg/remote/... ./pkg/wshrpc/wshremote ./pkg/util/shellutil ./pkg/wslconn ./cmd/wsh/cmd
+      - name: Gerar DMG e ZIP macOS arm64
+        run: bash scripts/force-build-mac.sh package
+      - name: Conferir pacote e hashes
+        run: bash scripts/force-verify-mac.sh
+      - uses: actions/upload-artifact@v5
+        with:
+          name: force-terminal-mac-arm64-adhoc
+          retention-days: 7
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            make/*.dmg
+            make/*.zip
+            make/*.blockmap
+            make/latest-mac.yml
+            make/force-release-manifest.json
