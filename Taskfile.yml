@@ -4,17 +4,41 @@
 version: "3"
 
 vars:
-    APP_NAME: "Wave"
+    APP_NAME: "Force Terminal"
     BIN_DIR: "bin"
     VERSION:
         sh: node version.cjs
     RMRF: '{{if eq OS "windows"}}powershell -NoProfile -NonInteractive Remove-Item -Force -Recurse -ErrorAction SilentlyContinue{{else}}rm -rf{{end}}'
     DATE: '{{if eq OS "windows"}}powershell -NoProfile -NonInteractive Get-Date -UFormat{{else}}date{{end}}'
-    ARTIFACTS_BUCKET: waveterm-github-artifacts/staging-w2
-    RELEASES_BUCKET: dl.waveterm.dev/releases-w2
-    WINGET_PACKAGE: CommandLine.Wave
 
 tasks:
+    force:deps:
+        desc: Install exactly the locked Node dependencies.
+        cmd: npm ci --no-audit --no-fund
+
+    force:generate:
+        desc: Explicitly regenerate tracked Go bindings and configuration schema; review the resulting diff.
+        cmds:
+            - go run -mod=readonly cmd/generateschema/main-generateschema.go
+            - go run -mod=readonly cmd/generatets/main-generatets.go
+            - go run -mod=readonly cmd/generatego/main-generatego.go
+
+    force:dev:
+        desc: Run Force Terminal on Apple Silicon using the development profile.
+        cmd: bash scripts/force-build-mac.sh dev
+
+    force:test-profile:
+        desc: Run Force Terminal with the isolated development profile for smoke testing.
+        cmd: bash scripts/force-build-mac.sh test-profile
+
+    force:package:mac-arm64:
+        desc: Build the macOS arm64 DMG and ZIP from locked dependencies.
+        cmd: bash scripts/force-build-mac.sh package
+
+    force:release:validate:
+        desc: Validate the complete macOS arm64 release artifact set.
+        cmd: node scripts/force-release.mjs create --version {{.VERSION}}
+
     electron:dev:
         desc: Run the Electron application via the Vite dev server (enables hot reloading).
         cmd: npm run dev
@@ -412,84 +436,6 @@ tasks:
         desc: Get the current package version, or bump version if args are present. To pass args to `version.cjs`, add them after `--`. See `version.cjs` for usage definitions for the arguments.
         cmd: node version.cjs {{.CLI_ARGS}}
 
-    artifacts:upload:
-        desc: Uploads build artifacts to the staging bucket in S3. To add additional AWS CLI arguments, add them after `--`.
-        vars:
-            ORIGIN: "make/"
-            DESTINATION: "{{.ARTIFACTS_BUCKET}}/{{.VERSION}}"
-        cmd: aws s3 cp {{.ORIGIN}}/ s3://{{.DESTINATION}}/ --recursive --exclude "*/*" --exclude "builder-*.yml" {{.CLI_ARGS}}
-
-    artifacts:download:*:
-        desc: Downloads the specified artifacts version from the staging bucket. To add additional AWS CLI arguments, add them after `--`.
-        vars:
-            DL_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
-            ORIGIN: "{{.ARTIFACTS_BUCKET}}/{{.DL_VERSION}}"
-            DESTINATION: "artifacts/{{.DL_VERSION}}"
-        cmds:
-            - '{{.RMRF}} "{{.DESTINATION}}"'
-            - aws s3 cp s3://{{.ORIGIN}}/ {{.DESTINATION}}/ --recursive {{.CLI_ARGS}}
-
-    artifacts:publish:*:
-        desc: Publishes the specified artifacts version from the staging bucket to the releases bucket. To add additional AWS CLI arguments, add them after `--`.
-        vars:
-            UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
-            ORIGIN: "{{.ARTIFACTS_BUCKET}}/{{.UP_VERSION}}"
-            DESTINATION: "{{.RELEASES_BUCKET}}"
-        cmd: |
-            OUTPUT=$(aws s3 cp s3://{{.ORIGIN}}/ s3://{{.DESTINATION}}/ --recursive {{.CLI_ARGS}})
-
-            for line in $OUTPUT; do
-                PREFIX=${line%%{{.DESTINATION}}*}
-                SUFFIX=${line:${#PREFIX}}
-                if [[ -n "$SUFFIX" ]]; then
-                    echo "https://$SUFFIX"
-                fi
-            done
-    artifacts:snap:publish:*:
-        desc: Publishes the specified artifacts version to Snapcraft.
-        vars:
-            UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
-            CHANNEL: '{{if contains "beta" .UP_VERSION}}beta{{else}}beta,stable{{end}}'
-        cmd: |
-            echo "Releasing to channels: [{{.CHANNEL}}]"
-            for file in waveterm_{{.UP_VERSION}}_*.snap; do
-                echo "Publishing $file"
-                snapcraft upload --release={{.CHANNEL}} $file
-                echo "Finished publishing $file"
-            done
-
-    artifacts:winget:publish:*:
-        desc: Submits a version bump request to WinGet for the latest release.
-        status:
-            - exit {{if contains "beta" .UP_VERSION}}0{{else}}1{{end}}
-        vars:
-            UP_VERSION: '{{ replace "v" "" (index .MATCH 0)}}'
-        cmd: |
-            wingetcreate update {{.WINGET_PACKAGE}} -s -v {{.UP_VERSION}} -u "https://{{.RELEASES_BUCKET}}/{{.APP_NAME}}-win32-x64-{{.UP_VERSION}}.msi" -t {{.GITHUB_TOKEN}}
-
-    dev:installwsh:
-        desc: quick shortcut to rebuild wsh and install for macos arm64
-        requires:
-            vars:
-                - VERSION
-        cmds:
-            - task: build:wsh:internal
-              vars:
-                  GOOS: darwin
-                  GOARCH: arm64
-            - cp dist/bin/wsh-{{.VERSION}}-darwin.arm64 ~/Library/Application\ Support/waveterm-dev/bin/wsh
-
-    dev:clearconfig:
-        desc: Clear the config directory for waveterm-dev
-        cmd: "{{.RMRF}} ~/.config/waveterm-dev"
-
-    dev:cleardata:
-        desc: Clear the data directory for waveterm-dev
-        cmds:
-            - task: dev:cleardata:windows
-            - task: dev:cleardata:linux
-            - task: dev:cleardata:macos
-
     check:ts:
         desc: Typecheck TypeScript code (frontend and electron).
         cmd: npx tsc --noEmit
@@ -502,21 +448,6 @@ tasks:
             - npm install
             - go mod tidy
             - cd docs && npm install
-
-    dev:cleardata:windows:
-        internal: true
-        platforms: [windows]
-        cmd: '{{.RMRF}} %LOCALAPPDATA%\waveterm-dev\Data'
-
-    dev:cleardata:linux:
-        internal: true
-        platforms: [linux]
-        cmd: "rm -rf ~/.local/share/waveterm-dev"
-
-    dev:cleardata:macos:
-        internal: true
-        platforms: [darwin]
-        cmd: 'rm -rf ~/Library/Application\ Support/waveterm-dev'
 
     npm:install:
         desc: Runs `npm install`

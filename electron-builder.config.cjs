@@ -2,6 +2,8 @@ const { Arch } = require("electron-builder");
 const pkg = require("./package.json");
 const fs = require("fs");
 const path = require("path");
+const { validateReleaseInputs } = require("./scripts/force-release-policy.cjs");
+const releaseModeValue = validateReleaseInputs();
 
 const windowsShouldSign = !!process.env.SM_CODE_SIGNING_CERT_SHA1_HASH;
 
@@ -36,6 +38,9 @@ const config = {
             from: "dist/tsunamiscaffold",
             to: "tsunamiscaffold",
         },
+        ...(releaseModeValue === "adhoc"
+            ? [{ from: "build/force-adhoc.json", to: "force-adhoc.json" }]
+            : []),
     ],
     directories: {
         output: "make",
@@ -45,14 +50,20 @@ const config = {
         "dist/schema/**/*", // schema files for Monaco editor
     ],
     mac: {
+        icon: "build/icon.icns",
+        artifactName: "${name}-${platform}-${arch}-${version}.${ext}",
+        identity: releaseModeValue === "adhoc" ? "-" : releaseModeValue === "community" ? process.env.FORCE_MACOS_SIGNING_IDENTITY : undefined,
+        notarize: releaseModeValue === "official",
+        forceCodeSigning: releaseModeValue !== "adhoc",
+        preAutoEntitlements: releaseModeValue === "community" ? false : undefined,
         target: [
             {
                 target: "zip",
-                arch: ["arm64", "x64"],
+                arch: ["arm64"],
             },
             {
                 target: "dmg",
-                arch: ["arm64", "x64"],
+                arch: ["arm64"],
             },
         ],
         category: "public.app-category.developer-tools",
@@ -62,20 +73,21 @@ const config = {
         entitlements: "build/entitlements.mac.plist",
         entitlementsInherit: "build/entitlements.mac.plist",
         extendInfo: {
-            NSContactsUsageDescription: "A CLI application running in Wave wants to use your contacts.",
-            NSRemindersUsageDescription: "A CLI application running in Wave wants to use your reminders.",
+            NSContactsUsageDescription: "A CLI application running in Force Terminal wants to use your contacts.",
+            NSRemindersUsageDescription: "A CLI application running in Force Terminal wants to use your reminders.",
             NSLocationWhenInUseUsageDescription:
-                "A CLI application running in Wave wants to use your location information while active.",
+                "A CLI application running in Force Terminal wants to use your location information while active.",
             NSLocationAlwaysUsageDescription:
-                "A CLI application running in Wave wants to use your location information, even in the background.",
-            NSCameraUsageDescription: "A CLI application running in Wave wants to use the camera.",
-            NSMicrophoneUsageDescription: "A CLI application running in Wave wants to use your microphone.",
-            NSCalendarsUsageDescription: "A CLI application running in Wave wants to use Calendar data.",
-            NSLocationUsageDescription: "A CLI application running in Wave wants to use your location information.",
-            NSAppleEventsUsageDescription: "A CLI application running in Wave wants to use AppleScript.",
+                "A CLI application running in Force Terminal wants to use your location information, even in the background.",
+            NSCameraUsageDescription: "A CLI application running in Force Terminal wants to use the camera.",
+            NSMicrophoneUsageDescription: "A CLI application running in Force Terminal wants to use your microphone.",
+            NSCalendarsUsageDescription: "A CLI application running in Force Terminal wants to use Calendar data.",
+            NSLocationUsageDescription: "A CLI application running in Force Terminal wants to use your location information.",
+            NSAppleEventsUsageDescription: "A CLI application running in Force Terminal wants to use AppleScript.",
         },
     },
     linux: {
+        icon: "build/icons",
         artifactName: "${name}-${platform}-${arch}-${version}.${ext}",
         category: "TerminalEmulator",
         executableName: pkg.name,
@@ -96,13 +108,14 @@ const config = {
         afterInstall: "build/deb-postinstall.tpl",
     },
     win: {
+        icon: "build/icon.ico",
         target: ["nsis", "msi", "zip"],
-        signtoolOptions: windowsShouldSign && {
+        ...(windowsShouldSign ? { signtoolOptions: {
             signingHashAlgorithms: ["sha256"],
             publisherName: "Command Line Inc",
             certificateSubjectName: "Command Line Inc",
             certificateSha1: process.env.SM_CODE_SIGNING_CERT_SHA1_HASH,
-        },
+        } } : {}),
     },
     appImage: {
         license: "LICENSE",
@@ -118,8 +131,10 @@ const config = {
         fpm: ["--rpm-rpmbuild-define", "_build_id_links none"],
     },
     publish: {
-        provider: "generic",
-        url: "https://dl.waveterm.dev/releases-w2",
+        provider: "github",
+        owner: "calneymgp",
+        repo: "force-terminal",
+        releaseType: "release",
     },
     afterPack: (context) => {
         // This is a workaround to restore file permissions to the wavesrv binaries on macOS after packaging the universal binary.

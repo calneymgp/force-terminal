@@ -6,7 +6,7 @@ const UpgradeOnboardingModal_v0_14_4_Content = () => {
         <div className="flex flex-col items-start gap-6 w-full mb-4 unselectable">
             <div className="text-secondary leading-relaxed">
                 <p className="mb-0">
-                    Wave v0.14.4 introduces vertical tabs, upgrades to xterm.js v6, and includes bug fixes and UI
+                    Force Terminal v0.14.4 introduces vertical tabs, upgrades to xterm.js v6, and includes bug fixes and UI
                     improvements.
                 </p>
             </div>
@@ -64,10 +64,10 @@ const UpgradeOnboardingModal_v0_14_4_Content = () => {
                                 - Renamed <code>presets/bg.json</code> to <code>backgrounds.json</code>
                             </li>
                             <li>
-                                <strong>Config Errors Moved</strong> - Config errors to the WaveConfig view for less
+                                <strong>Config Errors Moved</strong> - Config errors moved to the Configuration view for less
                                 clutter
                             </li>
-                            <li>WaveConfig now warns on Unsaved Changes</li>
+                            <li>The Configuration view now warns about unsaved changes</li>
                             <li>Preview streaming fixes for images/videos</li>
                             <li>Deprecated legacy AI widget has been removed</li>
                             <li>[bugfix] Fixed focus bug for newly created blocks</li>

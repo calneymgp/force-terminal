@@ -36,10 +36,26 @@ contextBridge.exposeInMainWorld("api", {
         ipcRenderer.on("fullscreen-change", (_event, isFullScreen) => callback(isFullScreen)),
     onZoomFactorChange: (callback) =>
         ipcRenderer.on("zoom-factor-change", (_event, zoomFactor) => callback(zoomFactor)),
-    onUpdaterStatusChange: (callback) => ipcRenderer.on("app-update-status", (_event, status) => callback(status)),
+    onUpdaterStatusChange: (callback) => {
+        const listener = (_event, status) => callback(status);
+        ipcRenderer.on("app-update-status", listener);
+        return () => ipcRenderer.removeListener("app-update-status", listener);
+    },
     getUpdaterStatus: () => ipcRenderer.sendSync("get-app-update-status"),
     getUpdaterChannel: () => ipcRenderer.sendSync("get-updater-channel"),
     installAppUpdate: () => ipcRenderer.send("install-app-update"),
+    onPrepareForUpdate: (callback) => {
+        const listener = async (_event, requestId: string, opts?: { freeze?: boolean }) => {
+            if (opts?.freeze) setUpdateInputFrozen(true);
+            try {
+                ipcRenderer.send("update-prepare-reply", requestId, await callback(requestId));
+            } catch (error) {
+                ipcRenderer.send("update-prepare-reply", requestId, { reasons: [String(error)], verifiedIdleBlocks: [] });
+            }
+        };
+        ipcRenderer.on("update-prepare", listener);
+        return () => ipcRenderer.removeListener("update-prepare", listener);
+    },
     onMenuItemAbout: (callback) => ipcRenderer.on("menu-item-about", callback),
     updateWindowControlsOverlay: (rect) => ipcRenderer.send("update-window-controls-overlay", rect),
     onReinjectKey: (callback) => ipcRenderer.on("reinject-key", (_event, waveEvent) => callback(waveEvent)),
@@ -74,6 +90,32 @@ contextBridge.exposeInMainWorld("api", {
     saveTextFile: (fileName: string, content: string) => ipcRenderer.invoke("save-text-file", fileName, content),
     setIsActive: () => ipcRenderer.invoke("set-is-active"),
 });
+
+let updateFreezeOverlay: HTMLDivElement | null = null;
+function stopInputDuringUpdate(event: Event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+}
+
+function setUpdateInputFrozen(frozen: boolean) {
+    const events = ["keydown", "beforeinput", "paste", "drop", "mousedown", "pointerdown", "touchstart"];
+    if (frozen && !updateFreezeOverlay) {
+        updateFreezeOverlay = document.createElement("div");
+        updateFreezeOverlay.textContent = "Preparing update…";
+        updateFreezeOverlay.setAttribute("role", "status");
+        Object.assign(updateFreezeOverlay.style, {
+            position: "fixed", inset: "0", zIndex: "2147483647", display: "grid", placeItems: "center",
+            background: "rgba(0,0,0,0.5)", color: "white", fontSize: "16px",
+        });
+        document.body.appendChild(updateFreezeOverlay);
+        for (const event of events) window.addEventListener(event, stopInputDuringUpdate, true);
+    } else if (!frozen && updateFreezeOverlay) {
+        updateFreezeOverlay.remove();
+        updateFreezeOverlay = null;
+        for (const event of events) window.removeEventListener(event, stopInputDuringUpdate, true);
+    }
+}
+ipcRenderer.on("update-prepare-release", () => setUpdateInputFrozen(false));
 
 // Custom event for "new-window"
 ipcRenderer.on("webview-new-window", (e, webContentsId, details) => {

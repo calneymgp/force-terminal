@@ -72,12 +72,12 @@ function VTabBarPreviewInner({ platform, setPlatform }: VTabBarPreviewInnerProps
                 <label className="flex flex-col gap-2 text-xs text-muted">
                     <span>Updater banner</span>
                     <select
-                        value={updaterStatus}
-                        onChange={(event) => setUpdaterStatus(event.target.value as UpdaterStatus)}
+                        value={updaterStatus.status}
+                        onChange={(event) => setUpdaterStatus({ status: event.target.value as UpdaterStatus })}
                         className="rounded border border-border bg-background px-2 py-1 text-foreground"
                     >
-                        <option value="up-to-date">Hidden</option>
-                        <option value="ready">Update Available</option>
+                        <option value="up-to-date">Up to date</option>
+                        <option value="ready">Ready to restart</option>
                         <option value="downloading">Downloading</option>
                         <option value="installing">Installing</option>
                         <option value="error">Error</option>

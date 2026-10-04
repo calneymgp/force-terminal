@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -78,14 +79,17 @@ func init() {
 func doShutdown(reason string) {
 	shutdownOnce.Do(func() {
 		log.Printf("shutting down: %s\n", reason)
-		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelFn()
 		go blockcontroller.StopAllBlockControllersForShutdown()
 		shutdownActivityUpdate()
-		sendTelemetryWrapper()
-		// TODO deal with flush in progress
 		clearTempFiles()
-		filestore.WFS.FlushCache(ctx)
+		// Persist before potentially slow network work. Waiting for a periodic
+		// flush must not masquerade as a completed shutdown flush.
+		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+		if err := flushShutdownStores(ctx, filestore.WFS.FlushForUpdate, secretstore.FlushForUpdate); err != nil {
+			log.Printf("shutdown storage flush failed: %v\n", err)
+		}
+		cancelFn()
+		sendTelemetryWrapper()
 		watcher := wconfig.GetWatcher()
 		if watcher != nil {
 			watcher.Close()
@@ -94,6 +98,16 @@ func doShutdown(reason string) {
 		log.Printf("shutdown complete\n")
 		os.Exit(0)
 	})
+}
+
+func flushShutdownStores(ctx context.Context, flushFiles, flushSecrets func(context.Context) error) error {
+	var fileErr, secretErr error
+	var writes sync.WaitGroup
+	writes.Add(2)
+	go func() { defer writes.Done(); fileErr = flushFiles(ctx) }()
+	go func() { defer writes.Done(); secretErr = flushSecrets(ctx) }()
+	writes.Wait()
+	return errors.Join(fileErr, secretErr)
 }
 
 // watch stdin, kill server if stdin is closed

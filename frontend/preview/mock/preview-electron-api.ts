@@ -25,10 +25,11 @@ const previewElectronApi: ElectronApi = {
     openExternal: (_url: string) => {},
     onFullScreenChange: (_callback: (isFullScreen: boolean) => void) => {},
     onZoomFactorChange: (_callback: (zoomFactor: number) => void) => {},
-    onUpdaterStatusChange: (_callback: (status: UpdaterStatus) => void) => {},
-    getUpdaterStatus: () => "up-to-date",
+    onUpdaterStatusChange: (_callback: (status: UpdaterState) => void) => () => {},
+    getUpdaterStatus: () => ({ status: "dev-disabled" }),
     getUpdaterChannel: () => "",
     installAppUpdate: () => {},
+    onPrepareForUpdate: (_callback: (requestId: string) => Promise<UpdatePreparation>) => () => {},
     onMenuItemAbout: (_callback: () => void) => {},
     updateWindowControlsOverlay: (_rect: Dimensions) => {},
     onReinjectKey: (_callback: (waveEvent: WaveKeyboardEvent) => void) => {},
@@ -58,6 +59,7 @@ const previewElectronApi: ElectronApi = {
     setBuilderWindowAppId: (_appId: string) => {},
     doRefresh: () => {},
     saveTextFile: (_fileName: string, _content: string) => Promise.resolve(false),
+    getPathForFile: (_file: File) => "",
     setIsActive: async () => {},
 };
 

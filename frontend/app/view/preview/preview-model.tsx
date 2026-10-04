@@ -663,7 +663,9 @@ export class PreviewModel implements ViewModel {
                 data64: stringToBase64(newFileContent),
             });
             globalStore.set(this.fileContent, newFileContent);
-            globalStore.set(this.newFileContent, null);
+            if (globalStore.get(this.newFileContent) === newFileContent) {
+                globalStore.set(this.newFileContent, null);
+            }
             console.log("saved file", filePath);
         } catch (e) {
             const errorStatus: ErrorMsg = {

@@ -1,7 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import Logo from "@/app/asset/logo.svg";
+import Logo from "@/app/asset/logo-detailed.svg";
 import { Button } from "@/app/element/button";
 import { FlexiModal } from "@/app/modals/modal";
 import { OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
@@ -85,7 +85,7 @@ const InitPage = ({
                 <div className={`${isCompact ? "" : "mb-2.5"} flex justify-center`}>
                     <Logo />
                 </div>
-                <div className="text-center text-[25px] font-normal text-foreground">Welcome to Wave Terminal</div>
+                <div className="text-center text-[25px] font-normal text-foreground">Welcome to Force Terminal</div>
             </header>
             <OverlayScrollbarsComponent
                 className="flex-1 overflow-y-auto min-h-0"
@@ -96,7 +96,7 @@ const InitPage = ({
                         <div>
                             <a
                                 target="_blank"
-                                href="https://github.com/wavetermdev/waveterm?ref=install"
+                                href="https://github.com/calneymgp/force-terminal?ref=install"
                                 rel="noopener"
                                 className="text-accent"
                                 onClick={handleStarClick}
@@ -105,18 +105,18 @@ const InitPage = ({
                             </a>
                         </div>
                         <div className="flex flex-col items-start gap-1 flex-1">
-                            <div className="text-foreground text-base leading-[18px]">Support us on GitHub</div>
+                            <div className="text-foreground text-base leading-[18px]">Support Force Terminal on GitHub</div>
                             <div className="text-secondary leading-5">
                                 We're <i>open source</i>, <i>open-model</i>, and committed to providing a free terminal
                                 for individual users. Please show your support by giving us a star on{" "}
                                 <a
                                     target="_blank"
-                                    href="https://github.com/wavetermdev/waveterm?ref=install"
+                                    href="https://github.com/calneymgp/force-terminal?ref=install"
                                     rel="noopener"
                                     className="text-accent"
                                     onClick={handleStarClick}
                                 >
-                                    Github&nbsp;(wavetermdev/waveterm)
+                                    GitHub&nbsp;(calneymgp/force-terminal)
                                 </a>
                             </div>
                         </div>
@@ -133,7 +133,7 @@ const InitPage = ({
                             </a>
                         </div>
                         <div className="flex flex-col items-start gap-1 flex-1">
-                            <div className="text-foreground text-base leading-[18px]">Join our Community</div>
+                            <div className="text-foreground text-base leading-[18px]">Original Wave Community</div>
                             <div className="text-secondary leading-5">
                                 Get help, submit feature requests, report bugs, or just chat with fellow terminal
                                 enthusiasts.
@@ -144,7 +144,7 @@ const InitPage = ({
                                     rel="noopener"
                                     className="text-accent"
                                 >
-                                    Join the Wave&nbsp;Discord&nbsp;Channel
+                                    Join the original Wave&nbsp;Discord&nbsp;community
                                 </a>
                             </div>
                         </div>
@@ -163,7 +163,7 @@ const InitPage = ({
                                     href="https://waveterm.dev/privacy"
                                     rel="noopener"
                                 >
-                                    Privacy Policy
+                                    Original Wave Privacy Policy
                                 </a>
                             </div>
                             <label className="flex items-center gap-2 cursor-pointer text-secondary">
@@ -207,7 +207,7 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": true },
         });
-        window.open("https://github.com/wavetermdev/waveterm?ref=not", "_blank");
+        window.open("https://github.com/calneymgp/force-terminal?ref=not", "_blank");
         setPageName("features");
     };
 
@@ -244,7 +244,7 @@ const NoTelemetryStarPage = ({ isCompact }: { isCompact: boolean }) => {
                     <div className="text-center text-secondary leading-relaxed max-w-md">
                         <p className="mb-4">No problem, we respect your privacy.</p>
                         <p className="mb-4">
-                            But, without usage data, we're flying blind. A GitHub star helps us know Wave is useful and
+                            But, without usage data, we're flying blind. A GitHub star helps us know Force Terminal is useful and
                             worth maintaining.
                         </p>
                     </div>

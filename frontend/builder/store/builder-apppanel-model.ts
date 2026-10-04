@@ -165,8 +165,10 @@ export class BuilderAppPanelModel {
                     "builder:env": envVars,
                 },
             });
-            globalStore.set(this.envVarsArrayAtom, cleanedArray);
-            globalStore.set(this.envVarsDirtyAtom, false);
+            if (globalStore.get(this.envVarsArrayAtom) === envVarsArray) {
+                globalStore.set(this.envVarsArrayAtom, cleanedArray);
+                globalStore.set(this.envVarsDirtyAtom, false);
+            }
             globalStore.set(this.errorAtom, "");
             this.debouncedRestart();
         } catch (err) {
@@ -285,8 +287,10 @@ export class BuilderAppPanelModel {
                 data64: encoded,
             });
             const formattedContent = base64ToString(result.data64);
-            globalStore.set(this.codeContentAtom, formattedContent);
             globalStore.set(this.originalContentAtom, formattedContent);
+            if (globalStore.get(this.codeContentAtom) === content) {
+                globalStore.set(this.codeContentAtom, formattedContent);
+            }
             globalStore.set(this.errorAtom, "");
             this.debouncedRestart();
         } catch (err) {

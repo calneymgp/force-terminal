@@ -12,9 +12,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/wavetermdev/waveterm/pkg/telemetry"
@@ -50,41 +50,45 @@ const WebShareUpdateUrl = "/auth/web-share-update"
 const PingUrl = "/ping"
 
 func CacheAndRemoveEnvVars() error {
-	WCloudEndpoint_VarCache = os.Getenv(WCloudEndpointVarName)
-	err := checkEndpointVar(WCloudEndpoint_VarCache, "wcloud endpoint", WCloudEndpointVarName)
-	if err != nil {
-		return err
+	apiEndpoint, hasAPIOverride := os.LookupEnv(WCloudEndpointVarName)
+	if hasAPIOverride {
+		if err := checkEndpointVar(apiEndpoint, "wcloud endpoint", WCloudEndpointVarName); err != nil {
+			return err
+		}
 	}
+	pingEndpoint, hasPingOverride := os.LookupEnv(WCloudPingEndpointVarName)
+	if hasPingOverride {
+		if err := checkEndpointVar(pingEndpoint, "wcloud ping endpoint", WCloudPingEndpointVarName); err != nil {
+			return err
+		}
+	}
+	WCloudEndpoint_VarCache = apiEndpoint
+	WCloudPingEndpoint_VarCache = pingEndpoint
 	os.Unsetenv(WCloudEndpointVarName)
-	WCloudPingEndpoint_VarCache = os.Getenv(WCloudPingEndpointVarName)
 	os.Unsetenv(WCloudPingEndpointVarName)
 	return nil
 }
 
 func checkEndpointVar(endpoint string, debugName string, varName string) error {
-	if !wavebase.IsDevMode() {
-		return nil
-	}
-	if endpoint == "" || !strings.HasPrefix(endpoint, "https://") {
-		return fmt.Errorf("invalid %s, %s not set or invalid", debugName, varName)
+	parsed, err := url.Parse(endpoint)
+	if err != nil || parsed.Scheme != "https" || parsed.Hostname() == "" {
+		return fmt.Errorf("invalid %s in %s", debugName, varName)
 	}
 	return nil
 }
 
 func GetEndpoint() string {
-	if !wavebase.IsDevMode() {
+	if !wavebase.IsDevMode() || WCloudEndpoint_VarCache == "" {
 		return WCloudEndpoint
 	}
-	endpoint := WCloudEndpoint_VarCache
-	return endpoint
+	return WCloudEndpoint_VarCache
 }
 
 func GetPingEndpoint() string {
-	if !wavebase.IsDevMode() {
+	if !wavebase.IsDevMode() || WCloudPingEndpoint_VarCache == "" {
 		return WCloudPingEndpoint
 	}
-	endpoint := WCloudPingEndpoint_VarCache
-	return endpoint
+	return WCloudPingEndpoint_VarCache
 }
 
 func makeAnonPostReq(ctx context.Context, apiUrl string, data interface{}) (*http.Request, error) {

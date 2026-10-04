@@ -1,7 +1,7 @@
 // Copyright 2026, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import Logo from "@/app/asset/logo.svg";
+import Logo from "@/app/asset/logo-detailed.svg";
 import { Button } from "@/app/element/button";
 import { FlexiModal } from "@/app/modals/modal";
 import { CurrentOnboardingVersion, OnboardingGradientBg } from "@/app/onboarding/onboarding-common";
@@ -30,7 +30,7 @@ const UpgradeMinorWelcomePage = ({ onStarClick, onAlreadyStarred, onMaybeLater }
                 <div className="flex justify-center">
                     <Logo />
                 </div>
-                <div className="text-center text-[25px] font-normal text-foreground">Welcome to Wave v0.14!</div>
+                <div className="text-center text-[25px] font-normal text-foreground">Welcome to Force Terminal v0.14!</div>
             </header>
             <OverlayScrollbarsComponent
                 className="flex-1 overflow-y-auto min-h-0"
@@ -68,9 +68,9 @@ const UpgradeMinorWelcomePage = ({ onStarClick, onAlreadyStarred, onMaybeLater }
                     <div className="w-full max-w-[550px] border-t border-border my-2"></div>
 
                     <div className="flex flex-col items-center gap-3 text-center max-w-[550px]">
-                        <div className="text-foreground text-base">Thanks for being an early Wave adopter! ⭐</div>
+                        <div className="text-foreground text-base">Thanks for being an early Force Terminal adopter! ⭐</div>
                         <div className="text-secondary text-sm text-left">
-                            A GitHub star shows your support for Wave (and open-source) and helps us reach more
+                            A GitHub star shows your support for Force Terminal (and open-source) and helps us reach more
                             developers.
                         </div>
                     </div>
@@ -144,7 +144,7 @@ const UpgradeOnboardingMinor = () => {
             oref: WOS.makeORef("client", clientId),
             meta: { "onboarding:githubstar": true },
         });
-        window.open("https://github.com/wavetermdev/waveterm?ref=upgrade", "_blank");
+        window.open("https://github.com/calneymgp/force-terminal?ref=upgrade", "_blank");
         setPageName("features");
     };
 

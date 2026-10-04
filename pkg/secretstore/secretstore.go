@@ -39,6 +39,10 @@ var lastInitTryTime time.Time
 var lastInitErr error
 var secretNameRegexp = regexp.MustCompile(SecretNamePattern)
 var linuxStorageBackend string
+var pendingWriteGeneration uint64
+var persistedWriteGeneration uint64
+var writeGate = make(chan struct{}, 1)
+var persistSecretSnapshot = persistSnapshot
 
 // must hold lock
 func getLinuxStorageBackend() error {
@@ -157,21 +161,71 @@ func writerLoop() {
 			timer.Stop()
 		}
 		timer = time.AfterFunc(WriteDebounceMs*time.Millisecond, func() {
-			if err := writeSecretsToFile(); err != nil {
+			if err := writeSecretsToFile(context.Background()); err != nil {
 				log.Printf("secretstore: error writing secrets: %v\n", err)
 			}
 		})
 	}
 }
 
-func writeSecretsToFile() error {
+func writeSecretsToFile(ctx context.Context) error {
+	select {
+	case writeGate <- struct{}{}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	defer func() { <-writeGate }()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	lock.Lock()
+	if pendingWriteGeneration == persistedWriteGeneration {
+		lock.Unlock()
+		return nil
+	}
+	generation := pendingWriteGeneration
 	secretsCopy := make(map[string]string, len(secrets)+1)
 	for k, v := range secrets {
 		secretsCopy[k] = v
 	}
-	secretsCopy[WriteTsKey] = time.Now().UTC().Format(time.RFC3339)
 	lock.Unlock()
+	if err := persistSecretSnapshot(ctx, secretsCopy); err != nil {
+		return err
+	}
+	lock.Lock()
+	persistedWriteGeneration = generation
+	lock.Unlock()
+	return nil
+}
+
+// FlushForUpdate confirms pending mutations, including ones made during a
+// concurrent write. An unused store never triggers a credential read.
+func FlushForUpdate(ctx context.Context) error {
+	lock.Lock()
+	if !initialized {
+		lock.Unlock()
+		return ctx.Err()
+	}
+	lock.Unlock()
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		lock.Lock()
+		done := persistedWriteGeneration == pendingWriteGeneration
+		lock.Unlock()
+		if done {
+			return nil
+		}
+		if err := writeSecretsToFile(ctx); err != nil {
+			return err
+		}
+	}
+}
+
+func persistSnapshot(ctx context.Context, secretsCopy map[string]string) error {
+	secretsCopy[WriteTsKey] = time.Now().UTC().Format(time.RFC3339)
 
 	jsonData, err := json.Marshal(secretsCopy)
 	if err != nil {
@@ -179,15 +233,26 @@ func writeSecretsToFile() error {
 	}
 
 	rpcClient := wshclient.GetBareRpcClient()
-	ctx, cancel := context.WithTimeout(context.Background(), EncryptionTimeout*time.Millisecond)
-	defer cancel()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	timeout := int64(EncryptionTimeout)
+	if deadline, ok := ctx.Deadline(); ok {
+		remaining := time.Until(deadline).Milliseconds()
+		if remaining <= 0 {
+			return context.DeadlineExceeded
+		}
+		if remaining < timeout {
+			timeout = remaining
+		}
+	}
 
 	encryptData := wshrpc.CommandElectronEncryptData{
 		PlainText: string(jsonData),
 	}
 	rpcOpts := &wshrpc.RpcOpts{
 		Route:   wshutil.ElectronRoute,
-		Timeout: EncryptionTimeout,
+		Timeout: timeout,
 	}
 
 	result, err := wshclient.ElectronEncryptCommand(rpcClient, encryptData, rpcOpts)
@@ -202,6 +267,9 @@ func writeSecretsToFile() error {
 	configDir := wavebase.GetWaveConfigDir()
 	secretsPath := filepath.Join(configDir, SecretsFileName)
 
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if err := os.WriteFile(secretsPath, []byte(result.CipherText), 0600); err != nil {
 		return fmt.Errorf("failed to write secrets file: %w", err)
 	}
@@ -230,6 +298,7 @@ func SetSecret(name string, value string) error {
 	defer lock.Unlock()
 
 	secrets[name] = strings.TrimRight(value, "\r\n")
+	pendingWriteGeneration++
 	requestWrite()
 	return nil
 }
@@ -245,6 +314,7 @@ func DeleteSecret(name string) error {
 	defer lock.Unlock()
 
 	delete(secrets, name)
+	pendingWriteGeneration++
 	requestWrite()
 	return nil
 }
@@ -283,7 +353,7 @@ func GetSecretNames() ([]string, error) {
 func CountSecrets() (int, error) {
 	lock.Lock()
 	defer lock.Unlock()
-	
+
 	if !initialized {
 		return 0, fmt.Errorf("secret store not initialized")
 	}

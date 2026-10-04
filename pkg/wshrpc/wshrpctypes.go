@@ -28,6 +28,12 @@ type MultiArg struct {
 	Args []any `json:"args"`
 }
 
+type CommandGetUpdateBlockersData struct {
+	VerifiedIdleBlocks []string `json:"verifiedidleblocks"`
+}
+
+type CommandFlushForUpdateData struct{}
+
 // Instructions for adding a new RPC call
 // * methods must end with Command
 // * methods must take context as their first parameter
@@ -77,6 +83,8 @@ type WshRpcInterface interface {
 	SetConfigCommand(ctx context.Context, data MetaSettingsType) error
 	SetConnectionsConfigCommand(ctx context.Context, data ConnConfigRequest) error
 	GetFullConfigCommand(ctx context.Context) (wconfig.FullConfigType, error)
+	FlushForUpdateCommand(ctx context.Context, data CommandFlushForUpdateData) error
+	GetUpdateBlockersCommand(ctx context.Context, data CommandGetUpdateBlockersData) ([]string, error)
 	GetWaveAIModeConfigCommand(ctx context.Context) (wconfig.AIModeConfigUpdate, error)
 	BlockInfoCommand(ctx context.Context, blockId string) (*BlockInfoData, error)
 	DebugTermCommand(ctx context.Context, data CommandDebugTermData) (*CommandDebugTermRtnData, error)
@@ -347,7 +355,6 @@ type CommandEventReadHistoryData struct {
 	Scope    string `json:"scope"`
 	MaxItems int    `json:"maxitems"`
 }
-
 
 type CpuDataRequest struct {
 	Id    string `json:"id"`

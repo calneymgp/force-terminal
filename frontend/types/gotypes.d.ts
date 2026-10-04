@@ -398,6 +398,9 @@ declare global {
         streammeta: StreamMeta;
     };
 
+    // wshrpc.CommandFlushForUpdateData
+    type CommandFlushForUpdateData = object;
+
     // wshrpc.CommandGetMetaData
     type CommandGetMetaData = {
         oref: ORef;
@@ -411,6 +414,11 @@ declare global {
     // wshrpc.CommandGetTempDirData
     type CommandGetTempDirData = {
         filename?: string;
+    };
+
+    // wshrpc.CommandGetUpdateBlockersData
+    type CommandGetUpdateBlockersData = {
+        verifiedidleblocks: string[];
     };
 
     // wshrpc.CommandGetWaveAIChatData
@@ -1589,6 +1597,7 @@ declare global {
         "debug:panictype"?: string;
         "block:view"?: string;
         "block:controller"?: string;
+        "block:subblock"?: boolean;
         "ai:backendtype"?: string;
         "ai:local"?: boolean;
         "wsh:cmd"?: string;

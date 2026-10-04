@@ -292,7 +292,7 @@ const QuickTips = () => {
                             rel="noopener"
                             className="hover:text-accent-400 hover:underline transition-colors font-medium"
                         >
-                            Join Our Discord
+                            Join the original Wave Discord community
                         </a>
                     </div>
                     <div className="flex items-center gap-3 p-3 rounded-md bg-black/20 hover:bg-black/30 transition-colors cursor-pointer">
@@ -305,7 +305,7 @@ const QuickTips = () => {
                             rel="noopener"
                             className="hover:text-accent-400 hover:underline transition-colors font-medium"
                         >
-                            Configuration Options
+                            Configuration Options (original Wave docs)
                         </a>
                     </div>
                     <div className="flex items-center gap-3 p-3 rounded-md bg-black/20 hover:bg-black/30 transition-colors cursor-pointer">
@@ -318,7 +318,7 @@ const QuickTips = () => {
                             rel="noopener"
                             className="hover:text-accent-400 hover:underline transition-colors font-medium"
                         >
-                            All Keybindings
+                            All Keybindings (original Wave docs)
                         </a>
                     </div>
                     <div className="flex items-center gap-3 p-3 rounded-md bg-black/20 hover:bg-black/30 transition-colors cursor-pointer">
@@ -331,7 +331,7 @@ const QuickTips = () => {
                             rel="noopener"
                             className="hover:text-accent-400 hover:underline transition-colors font-medium"
                         >
-                            Full Documentation
+                            Full Documentation (original Wave docs)
                         </a>
                     </div>
                 </div>

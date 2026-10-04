@@ -2,24 +2,24 @@ import type { Config } from "@docusaurus/types";
 import rehypeHighlight from "rehype-highlight";
 import { docOgRenderer } from "./src/renderer/image-renderers";
 
-const baseUrl = process.env.EMBEDDED ? "/docsite/" : "/";
+const baseUrl = process.env.EMBEDDED ? "/docsite/" : "/force-terminal/";
 
 const config: Config = {
-    title: "Wave Terminal Documentation",
+    title: "Force Terminal Documentation",
     tagline: "Level Up Your Terminal With Graphical Widgets",
-    favicon: "img/logo/wave-logo_appicon.svg",
+    favicon: "img/logo/force-terminal-icon.svg",
 
     // Set the production url of your site here
-    url: "https://docs.waveterm.dev/",
+    url: "https://calneymgp.github.io",
     // Set the /<baseUrl>/ pathname under which your site is served
     // For GitHub pages deployment, it is often '/<projectName>/'
     baseUrl,
 
     // GitHub pages deployment config.
     // If you aren't using GitHub pages, you don't need these.
-    organizationName: "wavetermdev", // Usually your GitHub org/user name.
-    projectName: "waveterm-docs", // Usually your repo name.
-    deploymentBranch: "main",
+    organizationName: "calneymgp", // Usually your GitHub org/user name.
+    projectName: "force-terminal", // Usually your repo name.
+    deploymentBranch: "gh-pages",
 
     onBrokenAnchors: "ignore",
     onBrokenLinks: "throw",
@@ -40,7 +40,7 @@ const config: Config = {
                 path: "docs",
                 routeBasePath: "/",
                 exclude: ["features/**"],
-                editUrl: !process.env.EMBEDDED ? "https://github.com/wavetermdev/waveterm/edit/main/docs/" : undefined,
+                editUrl: !process.env.EMBEDDED ? "https://github.com/calneymgp/force-terminal/edit/main/docs/" : undefined,
                 rehypePlugins: [rehypeHighlight],
             } as import("@docusaurus/plugin-content-docs").Options,
         ],
@@ -82,9 +82,10 @@ const config: Config = {
         },
         navbar: {
             logo: {
-                src: "img/logo/wave-light.png",
-                srcDark: "img/logo/wave-dark.png",
-                href: "https://www.waveterm.dev/",
+                alt: "Force Terminal",
+                src: "img/logo/force-terminal-logo-black.svg",
+                srcDark: "img/logo/force-terminal-logo-white.svg",
+                href: "https://github.com/calneymgp/force-terminal",
             },
             hideOnScroll: true,
             items: [
@@ -108,7 +109,7 @@ const config: Config = {
                               "aria-label": "Discord invite",
                           },
                           {
-                              href: "https://github.com/wavetermdev/waveterm",
+                              href: "https://github.com/calneymgp/force-terminal",
                               position: "right",
                               className: "header-link-custom custom-icon-github",
                               "aria-label": "GitHub repository",
@@ -129,15 +130,15 @@ const config: Config = {
             },
             {
                 name: "og:site_name",
-                content: "Wave Terminal Documentation",
+                content: "Force Terminal Documentation",
             },
             {
                 name: "application-name",
-                content: "Wave Terminal Documentation",
+                content: "Force Terminal Documentation",
             },
             {
                 name: "apple-mobile-web-app-title",
-                content: "Wave Terminal Documentation",
+                content: "Force Terminal Documentation",
             },
         ],
         footer: {

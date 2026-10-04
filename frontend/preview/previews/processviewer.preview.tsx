@@ -9,7 +9,7 @@ import { useRpcOverride } from "../mock/use-rpc-override";
 
 const PreviewNodeId = "preview-processviewer-node";
 
-const MockProcesses: ProcessInfo[] = [
+const MockProcesses: ProcessInfo[] = ([
     { pid: 1, ppid: 0, command: "launchd", user: "root", cpu: 0.0, mem: 4096 * 1024, mempct: 0.01 },
     { pid: 123, ppid: 1, command: "kernel_task", user: "root", cpu: 12.3, mem: 2048 * 1024 * 1024, mempct: 6.25 },
     { pid: 456, ppid: 1, command: "WindowServer", user: "_windowserver", cpu: 5.1, mem: 512 * 1024 * 1024, mempct: 1.56 },
@@ -25,7 +25,7 @@ const MockProcesses: ProcessInfo[] = [
     { pid: 5001, ppid: 1, command: "zsh", user: "mike", cpu: 0.0, mem: 6 * 1024 * 1024, mempct: 0.02 },
     { pid: 5678, ppid: 5001, command: "vim", user: "mike", cpu: 0.0, mem: 20 * 1024 * 1024, mempct: 0.06 },
     { pid: 6001, ppid: 1, command: "coreaudiod", user: "_coreaudiod", cpu: 0.4, mem: 16 * 1024 * 1024, mempct: 0.05 },
-];
+] as Omit<ProcessInfo, "numthreads">[]).map((process) => ({ ...process, numthreads: 1 }));
 
 const MockSummary: ProcessSummary = {
     total: MockProcesses.length,

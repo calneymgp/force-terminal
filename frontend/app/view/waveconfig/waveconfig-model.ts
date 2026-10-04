@@ -129,7 +129,7 @@ export class WaveConfigViewModel implements ViewModel {
     blockId: string;
     viewType = "waveconfig";
     viewIcon = atom("gear");
-    viewName = atom("Wave Config");
+    viewName = atom("Configuration");
     viewComponent = WaveConfigView;
     noPadding = atom(true);
     nodeModel: BlockNodeModel;
@@ -342,9 +342,11 @@ export class WaveConfigViewModel implements ViewModel {
                     info: { path: fullPath },
                     data64: stringToBase64(""),
                 });
-                globalStore.set(this.fileContentAtom, "");
                 globalStore.set(this.originalContentAtom, "");
-                globalStore.set(this.hasEditedAtom, false);
+                if (globalStore.get(this.fileContentAtom) === fileContent) {
+                    globalStore.set(this.fileContentAtom, "");
+                    globalStore.set(this.hasEditedAtom, false);
+                }
             } catch (err) {
                 globalStore.set(
                     this.errorMessageAtom,
@@ -384,9 +386,11 @@ export class WaveConfigViewModel implements ViewModel {
                     info: { path: fullPath },
                     data64: stringToBase64(formatted),
                 });
-                globalStore.set(this.fileContentAtom, formatted);
                 globalStore.set(this.originalContentAtom, formatted);
-                globalStore.set(this.hasEditedAtom, false);
+                if (globalStore.get(this.fileContentAtom) === fileContent) {
+                    globalStore.set(this.fileContentAtom, formatted);
+                    globalStore.set(this.hasEditedAtom, false);
+                }
             } catch (err) {
                 globalStore.set(
                     this.errorMessageAtom,

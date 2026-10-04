@@ -24,7 +24,7 @@ declare global {
         controlShiftDelayAtom: jotai.PrimitiveAtom<boolean>;
         prefersReducedMotionAtom: jotai.Atom<boolean>;
         documentHasFocus: jotai.PrimitiveAtom<boolean>;
-        updaterStatusAtom: jotai.PrimitiveAtom<UpdaterStatus>;
+        updaterStatusAtom: jotai.PrimitiveAtom<UpdaterState>;
         modalOpen: jotai.PrimitiveAtom<boolean>;
         allConnStatus: jotai.Atom<ConnStatus[]>;
         reinitVersion: jotai.PrimitiveAtom<number>;
@@ -101,10 +101,11 @@ declare global {
         openExternal: (url: string) => void; // open-external
         onFullScreenChange: (callback: (isFullScreen: boolean) => void) => void; // fullscreen-change
         onZoomFactorChange: (callback: (zoomFactor: number) => void) => void; // zoom-factor-change
-        onUpdaterStatusChange: (callback: (status: UpdaterStatus) => void) => void; // app-update-status
-        getUpdaterStatus: () => UpdaterStatus; // get-app-update-status
+        onUpdaterStatusChange: (callback: (status: UpdaterState) => void) => () => void; // app-update-status
+        getUpdaterStatus: () => UpdaterState; // get-app-update-status
         getUpdaterChannel: () => string; // get-updater-channel
         installAppUpdate: () => void; // install-app-update
+        onPrepareForUpdate: (callback: (requestId: string) => Promise<UpdatePreparation>) => () => void;
         onMenuItemAbout: (callback: () => void) => void; // menu-item-about
         updateWindowControlsOverlay: (rect: Dimensions) => void; // update-window-controls-overlay
         onReinjectKey: (callback: (waveEvent: WaveKeyboardEvent) => void) => void; // reinject-key
@@ -365,7 +366,9 @@ declare global {
         dispose?: () => void;
     }
 
-    type UpdaterStatus = "up-to-date" | "checking" | "downloading" | "ready" | "error" | "installing";
+    type UpdaterStatus = "pending" | "checking" | "up-to-date" | "available" | "downloading" | "ready" | "installing" | "error" | "dev-disabled";
+    type UpdaterState = { status: UpdaterStatus; version?: string; percent?: number; error?: string; blockedReasons?: string[] };
+    type UpdatePreparation = { reasons: string[]; verifiedIdleBlocks: string[] };
 
     // jotai doesn't export this type :/
     type Loadable<T> = { state: "loading" } | { state: "hasData"; data: T } | { state: "hasError"; error: unknown };

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Force Terminal</title>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="#111827"/>
+  <path fill="#64E3AF" d="M14 9h40l-5 11H26v8h21l-5 11H26v16H14V9Z"/>
+  <path fill="#64E3AF" d="m38 43 7 5-7 5v-4h-4v-2h4v-4Z"/>
+</svg>

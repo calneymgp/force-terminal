@@ -78,7 +78,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
     // this is *the* tab that this tabview represents.  it should never change.
     const staticTabIdAtom: Atom<string> = atom(initOpts.tabId);
     const controlShiftDelayAtom = atom(false);
-    const updaterStatusAtom = atom<UpdaterStatus>("up-to-date") as PrimitiveAtom<UpdaterStatus>;
+    const updaterStatusAtom = atom<UpdaterState>({ status: "pending" }) as PrimitiveAtom<UpdaterState>;
     try {
         globalStore.set(updaterStatusAtom, getApi().getUpdaterStatus());
         getApi().onUpdaterStatusChange((status) => {

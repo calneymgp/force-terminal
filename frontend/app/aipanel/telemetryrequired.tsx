@@ -91,7 +91,7 @@ const TelemetryRequiredMessage = ({ className }: TelemetryRequiredMessageProps) 
                             rel="noopener noreferrer"
                             className="!text-secondary hover:!text-accent/80 cursor-pointer"
                         >
-                            Privacy Policy
+                            Original Wave Privacy Policy
                         </a>
                     </div>
                 </div>

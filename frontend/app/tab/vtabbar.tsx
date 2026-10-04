@@ -331,6 +331,7 @@ export function VTabBar({ workspace, className }: VTabBarProps) {
             onContextMenu={handleTabBarContextMenu}
         >
             {env.isMacOS() && <MacOSHeader />}
+            {!env.isMacOS() && <div className="flex shrink-0 items-center px-2 pt-1"><UpdateStatusBanner /></div>}
             <div
                 ref={scrollContainerRef}
                 className="relative flex min-h-0 flex-col overflow-y-auto"

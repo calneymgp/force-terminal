@@ -9,6 +9,7 @@ package filestore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -393,10 +394,12 @@ type FlushStats struct {
 	NumCommitted    int
 }
 
+var errFlushInProgress = errors.New("flush already in progress")
+
 func (s *FileStore) FlushCache(ctx context.Context) (stats FlushStats, rtnErr error) {
 	wasFlushing := s.setUnlessFlushing()
 	if wasFlushing {
-		return stats, fmt.Errorf("flush already in progress")
+		return stats, errFlushInProgress
 	}
 	defer s.setIsFlushing(false)
 	startTime := time.Now()

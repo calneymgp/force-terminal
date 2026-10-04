@@ -21,7 +21,7 @@ import { getElectronAppBasePath, isDev, unamePlatform } from "./emain-platform";
 import { getOrCreateWebViewForTab, getWaveTabViewByWebContentsId, WaveTabView } from "./emain-tabview";
 import { delay, ensureBoundsAreVisible, waveKeyToElectronKey } from "./emain-util";
 import { ElectronWshClient } from "./emain-wsh";
-import { updater } from "./updater";
+import { requestRendererPreparation, updater } from "./updater";
 
 const DevInitTimeoutMs = 5000;
 
@@ -189,7 +189,7 @@ export class WaveBrowserWindow extends BaseWindow {
                 symbolColor: "white",
                 color: "#00000000",
             };
-            winOpts.icon = path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png");
+            winOpts.icon = path.join(getElectronAppBasePath(), "public/logos/force-terminal-icon.png");
             winOpts.autoHideMenuBar = !settings?.["window:showmenubar"];
             if (isTransparent) {
                 winOpts.transparent = true;
@@ -546,7 +546,15 @@ export class WaveBrowserWindow extends BaseWindow {
     }
 
     private removeTabViewLater(tabId: string, delayMs: number) {
-        setTimeout(() => {
+        setTimeout(async () => {
+            if (updater?.isPreparing) return;
+            const tab = this.allLoadedTabViews.get(tabId);
+            if (!tab || this.activeTabView === tab) return;
+            const preparation = await requestRendererPreparation(tab.webContents);
+            if (preparation.reasons.length) {
+                console.warn("Keeping tab with unsaved changes loaded", tabId, preparation.reasons);
+                return;
+            }
             this.removeTabView(tabId, false);
         }, delayMs);
     }
@@ -601,6 +609,13 @@ export class WaveBrowserWindow extends BaseWindow {
                         break;
                     }
                     case "switchworkspace": {
+                        const preparation = await Promise.all(
+                            [...this.allLoadedTabViews.values()].map((tab) => requestRendererPreparation(tab.webContents))
+                        );
+                        if (preparation.some((result) => result.reasons.length > 0)) {
+                            console.warn("Keeping workspace with unsaved changes loaded", preparation.flatMap((result) => result.reasons));
+                            return;
+                        }
                         const newWs = await WindowService.SwitchWorkspace(this.waveWindowId, entry.workspaceId);
                         if (!newWs) {
                             return;

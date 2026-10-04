@@ -279,7 +279,7 @@ electronApp.on("before-quit", (e) => {
             type: "question",
             buttons: ["Cancel", "Quit"],
             title: "Confirm Quit",
-            message: "Are you sure you want to quit Wave Terminal?",
+            message: "Are you sure you want to quit Force Terminal?",
             defaultId: 0,
             cancelId: 0,
         });
@@ -298,8 +298,8 @@ electronApp.on("before-quit", (e) => {
         return;
     }
     getWaveSrvProc()?.kill("SIGINT");
-    shutdownWshrpc();
     if (getForceQuit()) {
+        shutdownWshrpc();
         return;
     }
     e.preventDefault();
@@ -315,11 +315,12 @@ electronApp.on("before-quit", (e) => {
         electronApp.quit();
         return;
     }
+    // Server shutdown can include a 5s durable flush and up to 15s of telemetry/network cleanup.
     setTimeout(() => {
         console.log("waiting for wavesrv to exit...");
         setForceQuit(true);
         electronApp.quit();
-    }, 3000);
+    }, 30000);
 });
 process.on("SIGINT", () => {
     console.log("Caught SIGINT, shutting down");

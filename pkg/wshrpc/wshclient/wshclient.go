@@ -388,6 +388,12 @@ func FindGitBashCommand(w *wshutil.WshRpc, data bool, opts *wshrpc.RpcOpts) (str
 	return resp, err
 }
 
+// command "flushforupdate", wshserver.FlushForUpdateCommand
+func FlushForUpdateCommand(w *wshutil.WshRpc, data wshrpc.CommandFlushForUpdateData, opts *wshrpc.RpcOpts) error {
+	_, err := sendRpcRequestCallHelper[any](w, "flushforupdate", data, opts)
+	return err
+}
+
 // command "focuswindow", wshserver.FocusWindowCommand
 func FocusWindowCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) error {
 	_, err := sendRpcRequestCallHelper[any](w, "focuswindow", data, opts)
@@ -475,6 +481,12 @@ func GetTabCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts) (*waveo
 // command "gettempdir", wshserver.GetTempDirCommand
 func GetTempDirCommand(w *wshutil.WshRpc, data wshrpc.CommandGetTempDirData, opts *wshrpc.RpcOpts) (string, error) {
 	resp, err := sendRpcRequestCallHelper[string](w, "gettempdir", data, opts)
+	return resp, err
+}
+
+// command "getupdateblockers", wshserver.GetUpdateBlockersCommand
+func GetUpdateBlockersCommand(w *wshutil.WshRpc, data wshrpc.CommandGetUpdateBlockersData, opts *wshrpc.RpcOpts) ([]string, error) {
+	resp, err := sendRpcRequestCallHelper[[]string](w, "getupdateblockers", data, opts)
 	return resp, err
 }
 

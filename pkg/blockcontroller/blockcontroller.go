@@ -292,6 +292,18 @@ func GetBlockControllerRuntimeStatus(blockId string) *BlockControllerRuntimeStat
 	return controller.GetRuntimeStatus()
 }
 
+// Snapshot every live controller, including those whose tab is not loaded.
+func GetAllBlockControllerRuntimeStatuses() []BlockControllerRuntimeStatus {
+	controllers := getAllControllers()
+	statuses := make([]BlockControllerRuntimeStatus, 0, len(controllers))
+	for _, controller := range controllers {
+		if status := controller.GetRuntimeStatus(); status != nil {
+			statuses = append(statuses, *status)
+		}
+	}
+	return statuses
+}
+
 func DestroyBlockController(blockId string) {
 	controller := getController(blockId)
 	if controller == nil {

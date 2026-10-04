@@ -176,7 +176,8 @@ export default defineConfig({
         },
         plugins: [
             tsconfigPaths(),
-            { ...ViteImageOptimizer(), apply: "build" },
+            // Keep the approved brand vectors intact; optimize raster assets only for these logos.
+            { ...ViteImageOptimizer({ exclude: /force-terminal-.*\.svg$/ }), apply: "build" },
             svgr({
                 svgrOptions: { exportType: "default", ref: true, svgo: false, titleProp: true },
                 include: "**/*.svg",

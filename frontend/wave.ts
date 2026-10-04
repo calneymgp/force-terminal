@@ -5,6 +5,7 @@ import { App } from "@/app/app";
 import { loadMonaco } from "@/app/monaco/monaco-env";
 import { loadBadges } from "@/app/store/badge";
 import { GlobalModel } from "@/app/store/global-model";
+import { prepareLoadedModels } from "@/app/store/update-guard";
 import {
     globalRefocus,
     registerBuilderGlobalKeys,
@@ -17,11 +18,13 @@ import { RpcApi } from "@/app/store/wshclientapi";
 import { makeBuilderRouteId, makeTabRouteId } from "@/app/store/wshrouter";
 import { initWshrpc, TabRpcClient } from "@/app/store/wshrpcutil";
 import { BuilderApp } from "@/builder/builder-app";
+import { BuilderAppPanelModel } from "@/builder/store/builder-apppanel-model";
 import { getLayoutModelForStaticTab } from "@/layout/index";
 import { countersClear, countersPrint } from "@/store/counters";
 import {
     atoms,
     getApi,
+    getAllBlockComponentModels,
     globalStore,
     initGlobal,
     initGlobalWaveEventSubs,
@@ -37,7 +40,7 @@ import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 
 const platform = getApi().getPlatform();
-document.title = `Wave Terminal`;
+document.title = `Force Terminal`;
 let savedInitOpts: WaveInitOpts = null;
 
 (window as any).WOS = WOS;
@@ -63,6 +66,22 @@ async function initBare() {
     document.body.classList.add("is-transparent");
     getApi().onWaveInit(initWaveWrap);
     getApi().onBuilderInit(initBuilderWrap);
+    getApi().onPrepareForUpdate(async () => {
+        const result = await prepareLoadedModels(getAllBlockComponentModels(), globalStore.get);
+        const builder = BuilderAppPanelModel.getInstance();
+        if (builder.initialized) {
+            const appId = globalStore.get(atoms.builderAppId);
+            if (globalStore.get(builder.saveNeededAtom)) {
+                await builder.saveAppFile(appId);
+                if (globalStore.get(builder.saveNeededAtom)) result.reasons.push("Builder code still has unsaved changes");
+            }
+            if (globalStore.get(builder.envVarsDirtyAtom)) {
+                await builder.saveEnvVars(globalStore.get(atoms.builderId));
+                if (globalStore.get(builder.envVarsDirtyAtom)) result.reasons.push("Builder environment still has unsaved changes");
+            }
+        }
+        return result;
+    });
     setKeyUtilPlatform(platform);
     loadFonts();
     updateZoomFactor(getApi().getZoomFactor());
@@ -113,7 +132,7 @@ async function reinitWave() {
     const initialTab = await WOS.reloadWaveObject<Tab>(WOS.makeORef("tab", savedInitOpts.tabId));
     await WOS.reloadWaveObject<LayoutState>(WOS.makeORef("layout", initialTab.layoutstate));
     reloadAllWorkspaceTabs(ws);
-    document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
+    document.title = `Force Terminal - ${initialTab.name}`; // TODO update with tab name change
     getApi().setWindowInitStatus("wave-ready");
     globalStore.set(atoms.reinitVersion, globalStore.get(atoms.reinitVersion) + 1);
     globalStore.set(atoms.updaterStatusAtom, getApi().getUpdaterStatus());
@@ -182,7 +201,7 @@ async function initWave(initOpts: WaveInitOpts) {
         ]);
         loadAllWorkspaceTabs(ws);
         WOS.wpsSubscribeToObject(WOS.makeORef("workspace", waveWindow.workspaceid));
-        document.title = `Wave Terminal - ${initialTab.name}`; // TODO update with tab name change
+        document.title = `Force Terminal - ${initialTab.name}`; // TODO update with tab name change
     } catch (e) {
         console.error("Failed initialization error", e);
         getApi().sendLog("Error in initialization (wave.ts, loading required objects) " + e.message + "\n" + e.stack);
@@ -253,7 +272,7 @@ async function initBuilder(initOpts: BuilderInitOpts) {
         console.log("Could not load saved builder appId from rtinfo:", e);
     }
 
-    document.title = appIdToUse ? `WaveApp Builder (${appIdToUse})` : "WaveApp Builder";
+    document.title = appIdToUse ? `App Builder (${appIdToUse})` : "App Builder";
 
     globalStore.set(atoms.builderAppId, appIdToUse);
 

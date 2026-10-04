@@ -28,6 +28,7 @@ var BuildTime = "0"
 const (
 	WaveConfigHomeEnvVar           = "WAVETERM_CONFIG_HOME"
 	WaveDataHomeEnvVar             = "WAVETERM_DATA_HOME"
+	WaveCacheHomeEnvVar            = "WAVETERM_CACHE_HOME"
 	WaveAppPathVarName             = "WAVETERM_APP_PATH"
 	WaveAppResourcesPathVarName    = "WAVETERM_RESOURCES_PATH"
 	WaveAppElectronExecPathVarName = "WAVETERM_ELECTRONEXECPATH"
@@ -51,6 +52,7 @@ const NeedJwtConst = "NEED-JWT"
 
 var ConfigHome_VarCache string          // caches WAVETERM_CONFIG_HOME
 var DataHome_VarCache string            // caches WAVETERM_DATA_HOME
+var CacheHome_VarCache string           // caches WAVETERM_CACHE_HOME
 var AppPath_VarCache string             // caches WAVETERM_APP_PATH
 var AppResourcesPath_VarCache string    // caches WAVETERM_RESOURCES_PATH
 var AppElectronExecPath_VarCache string // caches WAVETERM_ELECTRONEXECPATH
@@ -61,10 +63,10 @@ const DomainSocketBaseName = "wave.sock"
 const RemoteDomainSocketBaseName = "wave-remote.sock"
 const WaveDBDir = "db"
 const ConfigDir = "config"
-const RemoteWaveHomeDirName = ".waveterm"
+const RemoteWaveHomeDirName = ".force-terminal"
 const RemoteWshBinDirName = "bin"
-const RemoteFullWshBinPath = "~/.waveterm/bin/wsh"
-const RemoteFullDomainSocketPath = "~/.waveterm/wave-remote.sock"
+const RemoteFullWshBinPath = "~/.force-terminal/bin/wsh"
+const RemoteFullDomainSocketPath = "~/.force-terminal/wave-remote.sock"
 
 const AppPathBinDir = "bin"
 
@@ -98,6 +100,8 @@ func CacheAndRemoveEnvVars() error {
 		return fmt.Errorf("%s not set", WaveDataHomeEnvVar)
 	}
 	os.Unsetenv(WaveDataHomeEnvVar)
+	CacheHome_VarCache = os.Getenv(WaveCacheHomeEnvVar)
+	os.Unsetenv(WaveCacheHomeEnvVar)
 	AppPath_VarCache = os.Getenv(WaveAppPathVarName)
 	os.Unsetenv(WaveAppPathVarName)
 	AppResourcesPath_VarCache = os.Getenv(WaveAppResourcesPathVarName)
@@ -186,7 +190,7 @@ func GetDomainSocketName() string {
 // returns a Unix-style path for the remote socket (using fmt.Sprintf instead of filepath.Join
 // because this path is for a remote Unix system, not the local OS which might be Windows)
 func GetPersistentRemoteSockName(clientId string) string {
-	return fmt.Sprintf("~/.waveterm/client/%s/waveterm.sock", clientId)
+	return fmt.Sprintf("~/.force-terminal/client/%s/waveterm.sock", clientId)
 }
 
 func EnsureWaveDataDir() error {
@@ -206,10 +210,13 @@ func EnsureWavePresetsDir() error {
 }
 
 func resolveWaveCachesDir() string {
+	if CacheHome_VarCache != "" {
+		return CacheHome_VarCache
+	}
 	var cacheDir string
-	appBundle := "waveterm"
+	appBundle := "force-terminal"
 	if IsDevMode() {
-		appBundle = "waveterm-dev"
+		appBundle = "force-terminal-dev"
 	}
 
 	switch runtime.GOOS {
@@ -478,8 +485,17 @@ func getSystemSummary(ctx context.Context) string {
 
 // job socket path on remote machine
 func GetRemoteJobSocketPath(jobId string) string {
-	socketDir := filepath.Join("/tmp", fmt.Sprintf("waveterm-%d", os.Getuid()))
+	socketDir := filepath.Join("/tmp", fmt.Sprintf("force-terminal-%d", os.Getuid()))
 	return filepath.Join(socketDir, fmt.Sprintf("%s.sock", jobId))
+}
+
+// Connection socket path on a remote Unix machine.
+func GetRemoteConnectionSocketPath(randomId string) string {
+	return fmt.Sprintf("/tmp/force-terminal-%s.sock", randomId)
+}
+
+func GetRemoteConnServerLogPath(uid int) string {
+	return fmt.Sprintf("/tmp/force-terminal-connserver-%d.log", uid)
 }
 
 // job file path on remote machine
@@ -491,6 +507,6 @@ func GetRemoteJobFilePath(jobId string, extension string) string {
 // job file dir on remote machines
 func GetRemoteJobLogDir() string {
 	homeDir := GetHomeDir()
-	jobDir := filepath.Join(homeDir, ".waveterm", "jobs")
+	jobDir := filepath.Join(homeDir, RemoteWaveHomeDirName, "jobs")
 	return jobDir
 }

@@ -21,13 +21,9 @@ func GetOldDBName() string {
 }
 
 func MakeOldDB(ctx context.Context) (*sqlx.DB, error) {
-	dbName := GetOldDBName()
-	rtn, err := sqlx.Open("sqlite3", fmt.Sprintf("file:%s?mode=ro&_busy_timeout=5000", dbName))
-	if err != nil {
-		return nil, err
-	}
-	rtn.DB.SetMaxOpenConns(1)
-	return rtn, nil
+	// Force starts with its own profile. Importing Wave data must be a future,
+	// explicit user action; even the dormant legacy migration cannot open Wave.
+	return nil, fmt.Errorf("legacy Wave database import is disabled in Force Terminal")
 }
 
 type OldHistoryType struct {

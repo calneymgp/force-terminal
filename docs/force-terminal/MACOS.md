@@ -1,0 +1,32 @@
+# Force Terminal no macOS arm64
+
+Alvo inicial: Apple Silicon, incluindo MacBook M5. O identificador do aplicativo é `io.github.calneymgp.force-terminal`. O Electron não empacotado usa `force-terminal-dev` automaticamente e deve coexistir com Wave Terminal. Para testar um pacote ad hoc isolado, configure `FORCE_TERMINAL_DATA_HOME`, `FORCE_TERMINAL_CONFIG_HOME` e `FORCE_TERMINAL_CACHE_HOME` com caminhos absolutos temporários. Não execute tarefas legadas de limpeza de dados Wave.
+
+## Desenvolvimento
+
+Instale Node 22, Go da versão declarada em `go.mod` e Task 3. Instale também as Command Line Tools do macOS com `xcode-select --install`, necessárias para compilar o backend com SQLite; confira `xcode-select -p`, `node --version`, `go version` e `task --version` antes do primeiro build. O Node 22 deve estar no PATH da sessão.
+
+No checkout, rode `task force:deps` uma vez para instalar exatamente o `package-lock.json`. Use `task force:dev` para compilar backend arm64, helpers remotos, frontend, schema e scaffold, e iniciar o Electron com o perfil de desenvolvimento. `task force:test-profile` cria três caminhos isolados temporários para dados, configuração e cache; defina `FORCE_TERMINAL_TEST_ROOT` com um caminho absoluto para reutilizá-los em outra execução. O script informa o caminho e não apaga os dados de teste. Ambos removem variáveis herdadas de arquivo de ambiente e endpoints Wave. O bootstrap não exige esses overrides; os serviços externos mantêm seus endpoints padrão. A geração dos bindings Go/TypeScript e do schema de origem é explícita: `task force:generate`; revise o diff gerado antes de commitar. O build usa `go build -mod=readonly` e não executa `go mod tidy`.
+
+`task force:package:mac-arm64` recria apenas `dist/bin`, `dist/schema`, `dist/tsunamiscaffold`, `tsunami/frontend/scaffold` e `make` antes de gerar o DMG e o ZIP ad hoc. Isso impede que binários e versões de builds anteriores entrem no pacote; não remove dados do usuário. O pacote ad hoc recebe assinatura ad hoc e contém `Contents/Resources/force-adhoc.json`, sinalizando que não integra o feed oficial de atualização. Os arquivos de release usam nomes como `force-terminal-darwin-arm64-0.14.5.zip`, compatíveis com a resolução de URLs do GitHub no electron-updater. A instalação do scaffold usa um lock próprio em `scripts/force-scaffold/` e não altera lockfiles durante o build. O script exige host Darwin arm64; não suporta empacotamento macOS no Linux.
+
+## Pipeline
+
+O workflow `Force Terminal macOS arm64` roda em `macos-15`, com checagem de `uname -m=arm64`. `workflow_dispatch` gera somente artefatos ad hoc do GitHub Actions. Um push de tag estável `vX.Y.Z` exige igualdade com `package.json` e usa `community` por padrão: certificado próprio estável, sem conta Apple Developer, notarização ou loja Apple. O servidor pode disparar esse build; o runner macOS faz o empacotamento.
+
+Para `community`, configure os dois secrets Force `FORCE_MACOS_CERT_P12_BASE64` e `FORCE_MACOS_CERT_PASSWORD`, além das duas variáveis públicas `FORCE_MACOS_SIGNING_IDENTITY` e `FORCE_MACOS_CERT_SHA256` com o nome da identidade e o fingerprint do certificado esperado. Preserve essa identidade entre versões. Não reutilize as credenciais TAMZ e não coloque valores de secrets em arquivos versionados. O pipeline deve falhar se faltar certificado ou se o certificado do pacote divergir do fingerprint; não pode cair silenciosamente em assinatura ad hoc.
+
+O modo opcional `official` é selecionado pela variável de repositório `FORCE_RELEASE_MODE=official`. Ele mantém Developer ID Application e notarização com os secrets `FORCE_MACOS_DEVELOPER_ID_P12_B64`, `FORCE_MACOS_DEVELOPER_ID_PASSWORD`, `FORCE_APPLE_ID`, `FORCE_APPLE_APP_SPECIFIC_PASSWORD` e `FORCE_APPLE_TEAM_ID`. Esse caminho também entrega pelo GitHub; não publica na App Store. A ausência de conta Apple não bloqueia o modo `community`.
+
+O pipeline confere bindings/schema gerados sem diff, TypeScript completo, testes do perfil/updater/guardas e os pacotes Go relevantes antes de empacotar. O electron-builder assina o `.app`, produz DMG e ZIP e gera `latest-mac.yml`. Só `official` notariza e grampeia o app. O verificador não reescreve o feed: falha se ele faltar ou divergir dos pacotes. Também confere em cada `.app` o bundle ID, nome, versão, executável, configuração do GitHub updater/cache Force, marcador ad hoc conforme o modo, arquitetura do app e wavesrv e a integridade da assinatura. Em `community`, confere a identidade estável e o fingerprint nas três cópias do app; em `official`, Developer ID, entitlement, Gatekeeper e ticket. O manifesto JSON registra SHA-256 dos cinco arquivos (DMG, ZIP, dois blockmaps e feed). Só após essas verificações o workflow cria uma release draft com os seis artefatos e compara nomes, tamanhos e digests SHA-256 dos assets remotos com o manifesto antes de publicá-la. Falha antes da última etapa deixa no máximo um draft, sem feed publicado.
+
+O DMG e ZIP são transportes do `.app` assinado. Em `official`, o app dentro dos dois transportes deve ter ticket válido; não grampeie o DMG após gerar o feed, pois isso altera seus bytes e invalida o blockmap e os hashes. Em `community`, a primeira abertura pode exibir aviso do macOS porque o app não é notarizado. O instalador e o updater Electron com certificado próprio ainda precisam de um teste real no Mac, sem necessidade de conta Apple para esse teste.
+
+## Smoke no Mac M5
+
+1. No perfil `force-terminal-dev`, abra terminal, rode um comando curto, abra um arquivo local e um remoto com conexão SSH descartável; feche e reabra, verificando a persistência.
+2. Instale um DMG ad hoc somente para validar execução e marca no Finder, Dock e UI. Confirme que Force e Wave coexistem e que os dados Wave não foram tocados.
+3. Com o certificado próprio Force configurado, instale a release `community` `vN`, publique `vN+1` pelo workflow usando a mesma identidade/fingerprint e confira que a consulta não baixa antes do clique; clique, acompanhe progresso, veja adiamento se houver comando ativo, então reinicie e confira dados persistidos. Não considere esse teste aprovado somente porque o tamz-bot Tauri atualiza.
+4. Registre versão, arquitetura, logs sem segredos, resultado de assinatura/notarização e diferenças observadas em `RELEASE-REPORT.md`.
+
+Não marque assinatura, smoke M5 ou update real como concluídos sem executá-los. Notarização é requisito apenas se o modo opcional `official` for escolhido.

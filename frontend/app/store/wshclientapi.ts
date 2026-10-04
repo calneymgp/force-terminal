@@ -390,6 +390,12 @@ export class RpcApiType {
         return client.wshRpcCall("findgitbash", data, opts);
     }
 
+    // command "flushforupdate" [call]
+    FlushForUpdateCommand(client: WshClient, data: CommandFlushForUpdateData, opts?: RpcOpts): Promise<void> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "flushforupdate", data, opts);
+        return client.wshRpcCall("flushforupdate", data, opts);
+    }
+
     // command "focuswindow" [call]
     FocusWindowCommand(client: WshClient, data: string, opts?: RpcOpts): Promise<void> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "focuswindow", data, opts);
@@ -478,6 +484,12 @@ export class RpcApiType {
     GetTempDirCommand(client: WshClient, data: CommandGetTempDirData, opts?: RpcOpts): Promise<string> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "gettempdir", data, opts);
         return client.wshRpcCall("gettempdir", data, opts);
+    }
+
+    // command "getupdateblockers" [call]
+    GetUpdateBlockersCommand(client: WshClient, data: CommandGetUpdateBlockersData, opts?: RpcOpts): Promise<string[]> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "getupdateblockers", data, opts);
+        return client.wshRpcCall("getupdateblockers", data, opts);
     }
 
     // command "getupdatechannel" [call]
