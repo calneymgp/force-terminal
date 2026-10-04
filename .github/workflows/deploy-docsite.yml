@@ -28,7 +28,9 @@ jobs:
     build:
         name: Build Docsite
         runs-on: ubuntu-latest
-        if: github.event.pull_request.draft == false
+        # Keep the upstream website workflow scoped to its original repository.
+        # Force test installers are distributed through their own workflow and Tailscale.
+        if: github.repository == 'wavetermdev/waveterm' && github.event.pull_request.draft == false
         steps:
             - uses: actions/checkout@v6
               with:
@@ -61,7 +63,7 @@ jobs:
     deploy:
         name: Deploy to GitHub Pages
         # Only deploy when pushed to the main branch
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.repository == 'wavetermdev/waveterm' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         needs: build
         # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
         permissions:

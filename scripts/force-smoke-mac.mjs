@@ -195,14 +195,18 @@ try {
     const editorRequest = { tabid: await cdp.evaluate('window.globalStore.get(window.globalAtoms.staticTabId)'),
         blockdef: { meta: { view: 'preview', file, edit: true } }, focused: true };
     await cdp.evaluate(`window.RpcApi.CreateBlockCommand(window.TabRpcClient,${JSON.stringify(editorRequest)}).then(()=>true)`);
-    await until(() => cdp.evaluate('Boolean(document.querySelector(".monaco-editor textarea.inputarea"))'), 'visual editor mount');
-    await cdp.evaluate('document.querySelector(".monaco-editor textarea.inputarea").focus();true');
+    // Monaco enables native EditContext by default on current Chromium; older
+    // engines use its textarea instead. Exercise the active input surface.
+    const editorSelector = '.monaco-editor .native-edit-context, .monaco-editor textarea.inputarea';
+    await until(() => cdp.evaluate(`Boolean(document.querySelector(${JSON.stringify(editorSelector)}))`), 'visual editor mount');
+    await cdp.evaluate(`document.querySelector(${JSON.stringify(editorSelector)}).focus();true`);
     await commandKey(cdp, 'a', 'KeyA', 65);
     await cdp.call('Input.insertText', { text: 'edited-in-ui\n' });
     await commandKey(cdp, 's', 'KeyS', 83);
     await until(() => cdp.evaluate(`window.RpcApi.FileReadCommand(window.TabRpcClient,{info:{path:${JSON.stringify(file)}}}).then(r=>atob(r.data64)==='edited-in-ui\\n')`), 'visual editor Cmd+S persistence');
     assert.equal(fs.readFileSync(file, 'utf8'), 'edited-in-ui\n');
     checked('visual editor typed and saved local file with Cmd+S');
+    await screenshot(cdp, '02-editor.png');
     const tabId = await cdp.evaluate('window.globalStore.get(window.globalAtoms.staticTabId)');
     assert.ok(tabId);
     const metaRequest = { oref: `tab:${tabId}`, meta: { 'force:smoke': marker } };
@@ -223,6 +227,13 @@ try {
     report.error = error.message;
     console.error(`FAIL: ${error.message}`);
     process.exitCode = 1;
+    for (const connection of connections) {
+        try {
+            report.domDiagnostic = await connection.evaluate('({monaco:!!document.querySelector(".monaco-editor"),nativeEditContext:!!document.querySelector(".native-edit-context"),legacyTextArea:!!document.querySelector(".monaco-editor textarea.inputarea")})');
+            await screenshot(connection, 'failure.png');
+            break;
+        } catch { /* The application may already have exited. */ }
+    }
 } finally {
     for (const connection of connections) connection.close();
     for (const proc of owned) { try { process.kill(-proc.pid, 'SIGTERM'); } catch {} }
