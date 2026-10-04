@@ -12,6 +12,8 @@ No checkout, rode `task force:deps` uma vez para instalar exatamente o `package-
 
 ## Pipeline
 
+Para gerar somente um instalador de teste, execute o workflow `Force Terminal DMG de teste` (`force-test-mac.yml`) com `source_ref=main`. Ele não exige credenciais, gera assinatura ad hoc e entrega o artefato `force-terminal-mac-arm64-adhoc`, com updater desabilitado. O [primeiro build aprovado](https://github.com/calneymgp/force-terminal/actions/runs/37221443395) gerou a versão 0.14.5; o DMG também foi disponibilizado em uma página privada via Tailscale, conforme solicitado. Abra o DMG no Mac e arraste o aplicativo para Aplicativos. O macOS pode solicitar autorização na primeira abertura.
+
 O workflow `Force Terminal macOS arm64` roda em `macos-15`, com checagem de `uname -m=arm64`. `workflow_dispatch` gera somente artefatos ad hoc do GitHub Actions. Um push de tag estável `vX.Y.Z` exige igualdade com `package.json` e usa `community` por padrão: certificado próprio estável, sem conta Apple Developer, notarização ou loja Apple. O servidor pode disparar esse build; o runner macOS faz o empacotamento.
 
 Para `community`, configure os dois secrets Force `FORCE_MACOS_CERT_P12_BASE64` e `FORCE_MACOS_CERT_PASSWORD`, além das duas variáveis públicas `FORCE_MACOS_SIGNING_IDENTITY` e `FORCE_MACOS_CERT_SHA256` com o nome da identidade e o fingerprint do certificado esperado. Preserve essa identidade entre versões. Não reutilize as credenciais TAMZ e não coloque valores de secrets em arquivos versionados. O pipeline deve falhar se faltar certificado ou se o certificado do pacote divergir do fingerprint; não pode cair silenciosamente em assinatura ad hoc.

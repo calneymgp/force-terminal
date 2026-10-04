@@ -22,7 +22,11 @@ O Force permanece Electron + React/TypeScript + Go. O modelo de entrega é o mes
 
 No Force, `electron-updater` utiliza DMG + ZIP, `latest-mac.yml` e blockmaps; não utiliza o `latest.json` nem a chave minisign do Tauri. A consulta permanece ao abrir e a cada dez minutos, sem download automático. O clique prepara persistência e verifica trabalho ativo antes de reiniciar.
 
-## O que continua necessário
+## Entrega atual: DMG de teste
+
+O usuário escolheu somente o instalador de teste com página HTML privada pelo Tailscale. O [build macOS arm64 37221443395](https://github.com/calneymgp/force-terminal/actions/runs/37221443395) passou e o DMG 0.14.5 foi entregue. Não foram criados certificados ou secrets. Este pacote usa assinatura ad hoc e instalação manual, com atualização automática desabilitada.
+
+## Próxima etapa: distribuição com atualização
 
 - Configurar um certificado próprio Force persistente e seu fingerprint no CI. Não reutilizar ou copiar as credenciais TAMZ. Não gerar uma assinatura ad hoc diferente a cada versão para o canal de atualização.
 - Gerar os pacotes em runner macOS; o servidor Linux pode preparar código e disparar CI, mas não substitui o toolchain macOS do backend.

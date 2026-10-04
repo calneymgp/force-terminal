@@ -4,6 +4,8 @@ Revisão de leitura da árvore de trabalho em `codex/force-foundation-20261004`,
 
 **Veredito deste escopo:** os riscos abaixo foram corrigidos na árvore local, incluindo a persistência de secrets identificada na auditoria posterior. A validação no M5 e a atualização assinada seguem pendentes.
 
+**Evidência posterior à revisão:** o [build macOS arm64 37221443395](https://github.com/calneymgp/force-terminal/actions/runs/37221443395) passou e verificou o app, ZIP e DMG com assinatura ad hoc. O DMG de teste foi entregue via Tailscale; detalhes em [RELEASE-REPORT.md](RELEASE-REPORT.md). Isso não encerra o smoke no M5 nem a atualização instalada N → N+1. Developer ID e notarização são requisitos somente do canal opcional `official`; o canal `community` ainda requer prova com certificado próprio estável.
+
 ## Achados resolvidos na árvore revisada
 
 ### [P1 resolvido] O encerramento podia expirar antes do flush final

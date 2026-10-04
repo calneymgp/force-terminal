@@ -4,13 +4,13 @@ Auditoria da árvore local em 4 de outubro de 2026. Host: Linux x86_64; Node 24 
 
 | Item | Evidência disponível | Prova ainda necessária |
 |---|---|---|
-| 0 — ambiente completo | Tarefas Force para build do frontend, Electron, servidor, helpers, schemas e scaffold; versões e lockfiles documentados; perfil temporário explícito; TypeScript completo e build de produção passaram | Preparar Node 22, Go, Task 3 e ferramentas Apple no M5; abrir app completo e gerar DMG/ZIP ad hoc |
+| 0 — ambiente completo | Build completo macOS arm64 com Node 22, Go, frontend, Electron, servidor, helpers, schemas e scaffold aprovado no GitHub; DMG/ZIP ad hoc validados e DMG entregue via Tailscale | Preparar desenvolvimento no M5, instalar e abrir app completo, exercitar fluxos reais |
 | 0 — referência funcional | Electron real em perfil descartável Linux; comando local e leitura/escrita via RPC aprovados; roteiro reproduzível disponível | Terminal, SSH descartável, editores locais/remotos e reabertura no M5 |
 | 1a — identidade | SVGs Raio Lunar preservados, variantes compacta/detalhada, nomes e metadados Force aplicados; fork correto | Conferir Finder, Dock, janelas, onboarding, About, topbar e instalador no pacote macOS |
 | 1b A — isolamento | Resolução central de perfis antes do servidor/lock; overrides Force; defaults remotos compilados Force; migração Wave desativada; testes locais/remotos passaram | Force e Wave instalados simultaneamente, inclusive helpers SSH, secrets e identidade de criptografia, sem compartilhar dados |
 | 1b B — atualização | Botão permanente e estado compartilhado; startup/timer de 10 minutos; download e instalação só por ação; IPC, preload, atoms e mocks alinhados; testes de concorrência, progresso e falhas passaram | Exercitar versão instalada assinada e feed publicado completo |
 | 1b C — trabalho e persistência | Preparo de todas as views, timeout e bloqueio de abas sujas; estados ativo/desconhecido bloqueiam; flush de arquivos e secrets; shutdown com RPC vivo; testes Go com detector de corrida passaram | Editores reais, comando ativo, adiamento e persistência após atualização no M5 |
-| 1b D — distribuição | Workflow macOS arm64, tag igual à versão, modos adhoc/community/official, DMG/ZIP/feed/blockmaps, validação de hashes e draft antes de publicar; política de assinatura própria sem notarização preparada | Executar workflow no GitHub, validar pacote ad hoc e, em etapa posterior autorizada, configurar certificado próprio para atualização |
+| 1b D — distribuição | Workflow ad hoc executado no GitHub; DMG/ZIP/feed/blockmaps e assinaturas ad hoc validados no macOS; DMG entregue via Tailscale; política community/official preparada | Em etapa posterior autorizada, configurar certificado próprio e validar release para atualização instalada |
 | 1b — aceite final | Código e pipeline preparados | Instalar N e atualizar para N+1 pelo botão; comprovar versão, reinício, dados e adiamento com trabalho ativo |
 
 ## Estado externo conferido
@@ -37,5 +37,7 @@ Essa evidência cobre a compilação do helper para o alvo; não comprova sua ex
 As prioridades **0 e 1a aguardam validação no M5**. A prioridade **1b permanece parcialmente implementada e sem aceite integral** até assinatura estável e atualização instalada real. Notarização é opcional no canal `official`; não bloqueia `community`. Na etapa inicial não houve commit, push ou release.
 
 Direcionamento atual: o usuário escolheu somente um DMG de teste, sem criar certificado/configurar credenciais, com build no GitHub e download em página HTML pela rede Tailscale. Esse pacote ad hoc não ativa atualizações. A entrega do link não substitui os aceites de smoke e atualização instalada.
+
+Entrega desse direcionamento: [run macOS 37221443395](https://github.com/calneymgp/force-terminal/actions/runs/37221443395) concluído com sucesso; DMG 0.14.5 validado por manifesto após download e servido na página privada, com HTTP 200 e download confirmado por tamanho/range. Os registros anteriores de zero workflows/execuções descrevem a auditoria inicial; agora o código está em `main`, o workflow está registrado e há um build aprovado. Credenciais e releases estáveis permanecem intocados.
 
 Para executar os aceites no aparelho, siga [MACOS.md](MACOS.md). Evidências de execução local e seus limites estão em [RUNTIME-REPORT.md](RUNTIME-REPORT.md); detalhes técnicos em [UPDATES-REPORT.md](UPDATES-REPORT.md), [ISOLATION-REPORT.md](ISOLATION-REPORT.md), [RELEASE-REPORT.md](RELEASE-REPORT.md) e [FOUNDATION-REVIEW.md](FOUNDATION-REVIEW.md).
