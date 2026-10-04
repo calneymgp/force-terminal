@@ -13,9 +13,9 @@ Auditoria da árvore local em 4 de outubro de 2026. Host: Linux x86_64; Node 24 
 | 1b D — distribuição | Workflow ad hoc executado no GitHub; DMG/ZIP/feed/blockmaps e assinaturas ad hoc validados no macOS; DMG entregue via Tailscale; política community/official preparada | Em etapa posterior autorizada, configurar certificado próprio e validar release para atualização instalada |
 | 1b — aceite final | Código e pipeline preparados | Instalar N e atualizar para N+1 pelo botão; comprovar versão, reinício, dados e adiamento com trabalho ativo |
 
-## Estado externo conferido
+## Estado externo na auditoria inicial
 
-A conferência posterior revalidou os mesmos limites externos: host Linux x86_64, nenhum workflow/execução/release Force no GitHub e os cinco nomes de secrets Apple ausentes. Não há processo de build macOS em andamento para aguardar.
+A conferência inicial encontrou host Linux x86_64, nenhum workflow/execução/release Force no GitHub e os cinco nomes de secrets Apple ausentes. Naquele momento não havia processo de build macOS em andamento. A entrega posterior do DMG, registrada ao final deste documento, atualiza o estado do código e do build.
 
 - O remoto `origin` aponta para o fork público `calneymgp/force-terminal`; a branch remota `main` ainda está na referência upstream usada como base.
 - As consultas de leitura ao GitHub retornaram zero workflows, execuções e releases. O workflow Force está na árvore local e não foi publicado ou executado nesta etapa.

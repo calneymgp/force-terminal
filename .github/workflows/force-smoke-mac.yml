@@ -1,0 +1,66 @@
+name: Force Terminal smoke do DMG
+run-name: Smoke macOS arm64 — artefato ${{ inputs.artifact_run_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_run_id:
+        description: Execução aprovada do workflow DMG de teste
+        required: true
+        default: '37221443395'
+        type: string
+permissions:
+  contents: read
+  actions: read
+jobs:
+  smoke:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar ferramentas do teste
+        env:
+          WAVETERM_SKIP_APP_DEPS: '1'
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        run: |
+          test "$(uname -m)" = arm64
+          npm ci --no-audit --no-fund
+      - uses: actions/download-artifact@v5
+        with:
+          name: force-terminal-mac-arm64-adhoc
+          path: smoke-artifacts
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.artifact_run_id }}
+      - name: Validar instalador e executar aplicativo extraído do DMG
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p 'require("./smoke-artifacts/force-release-manifest.json").version')"
+          node scripts/force-release.mjs verify --dir smoke-artifacts --version "$version"
+          fixture="$(mktemp -d)"
+          mounted=false
+          cleanup() {
+            if [[ "$mounted" == true ]]; then hdiutil detach "$fixture/dmg" -quiet || true; fi
+            rm -rf "$fixture"
+          }
+          trap cleanup EXIT
+          mkdir "$fixture/dmg"
+          hdiutil attach -readonly -nobrowse -quiet -mountpoint "$fixture/dmg" "smoke-artifacts/force-terminal-darwin-arm64-$version.dmg"
+          mounted=true
+          ditto "$fixture/dmg/Force Terminal.app" "$fixture/Force Terminal.app"
+          hdiutil detach "$fixture/dmg" -quiet
+          mounted=false
+          codesign --verify --deep --strict "$fixture/Force Terminal.app"
+          node scripts/force-smoke-mac.mjs "$fixture/Force Terminal.app" smoke-results
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: force-terminal-mac-runtime-smoke
+          path: smoke-results
+          if-no-files-found: warn
+          retention-days: 7
