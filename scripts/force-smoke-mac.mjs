@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import net from 'node:net';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import WebSocket from 'ws';
 
@@ -98,7 +98,9 @@ async function launch() {
     proc.stdout.on('data', data => { logs += data; });
     proc.stderr.on('data', data => { logs += data; });
     let exited;
+    let mainExit;
     proc.once('error', error => { exited = { error: error.message }; });
+    proc.once('exit', (code, signal) => { mainExit = { code, signal }; });
     proc.once('close', (code, signal) => { exited = { code, signal }; owned.delete(proc); });
     let renderer;
     await until(async () => {
@@ -115,7 +117,7 @@ async function launch() {
         }
         return false;
     }, 'packaged renderer readiness');
-    return { proc, renderer, getExit: () => exited,
+    return { proc, renderer, getExit: () => exited, getMainExit: () => mainExit,
         getLogs: () => (fs.existsSync(logPath) ? fs.readFileSync(logPath).subarray(logOffset).toString() : '') + logs };
 }
 async function screenshot(cdp, name) {
@@ -124,7 +126,22 @@ async function screenshot(cdp, name) {
 }
 async function quit(app) {
     app.proc.kill('SIGTERM'); // The real main-process handler calls app.quit(), including persistence.
-    await until(() => Boolean(app.getExit()), 'normal app/backend quit', 40000);
+    try {
+        await until(() => Boolean(app.getExit()), 'normal app/backend quit', 40000);
+    } catch (error) {
+        const logs = app.getLogs();
+        const processes = execFileSync('ps', ['-axo', 'pid,ppid,pgid,comm'], { encoding: 'utf8' }).split('\n')
+            .filter(line => Number(line.trim().split(/\s+/)[2]) === app.proc.pid);
+        report.shutdownDiagnostic = {
+            mainExit: app.getMainExit() ?? null, pipesClosed: app.getExit() ?? null,
+            signalHandled: logs.includes('Caught SIGTERM'), backendComplete: logs.includes('shutdown complete'),
+            backendExited: logs.includes('wavesrv exited, shutting down'),
+            forcedDeadline: logs.includes('waiting for wavesrv to exit'),
+            flushError: logs.includes('shutdown storage flush failed'),
+            processesInOwnedGroup: processes,
+        };
+        throw error;
+    }
     assert.deepEqual(app.getExit(), { code: 0, signal: null });
     assert.match(app.getLogs(), /shutdown complete/);
     assert.doesNotMatch(app.getLogs(), /shutdown storage flush failed|secretstore: error writing secrets/);
