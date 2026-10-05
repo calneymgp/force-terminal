@@ -82,6 +82,7 @@ type SSHConn struct {
 	WshEnabled         *atomic.Bool
 	Opts               *remote.SSHOpts
 	Client             *ssh.Client
+	hostIdentity       remote.SSHHostIdentity
 	DomainSockName     string // if "", then no domain socket
 	DomainSockListener net.Listener
 	ConnController     *ssh.Session
@@ -215,10 +216,11 @@ func (conn *SSHConn) closeInternal_withlifecyclelock() {
 		if duration > 100 {
 			log.Printf("[conncontroller] conn:%s Client.Close() took %d ms", conn.GetName(), duration)
 		}
-		conn.WithLock(func() {
-			conn.Client = nil
-		})
 	}
+	conn.WithLock(func() {
+		conn.Client = nil
+		conn.hostIdentity = remote.SSHHostIdentity{}
+	})
 	listener := WithLockRtn(conn, func() net.Listener {
 		return conn.DomainSockListener
 	})
@@ -695,6 +697,15 @@ func (conn *SSHConn) GetClient() *ssh.Client {
 	return conn.Client
 }
 
+func (conn *SSHConn) GetHostIdentity() (remote.SSHHostIdentity, bool) {
+	conn.lock.Lock()
+	defer conn.lock.Unlock()
+	if conn.Status != Status_Connected || conn.Client == nil || !conn.hostIdentity.MatchesClient(conn.Client) {
+		return remote.SSHHostIdentity{}, false
+	}
+	return conn.hostIdentity, true
+}
+
 func (conn *SSHConn) GetMonitor() *ConnMonitor {
 	conn.lock.Lock()
 	defer conn.lock.Unlock()
@@ -738,6 +749,7 @@ func (conn *SSHConn) Connect(ctx context.Context, connFlags *wconfig.ConnKeyword
 		} else {
 			conn.Status = Status_Connecting
 			conn.Error = ""
+			conn.hostIdentity = remote.SSHHostIdentity{}
 			connectAllowed = true
 		}
 	})
@@ -952,11 +964,17 @@ func (conn *SSHConn) persistWshInstalled(ctx context.Context, result WshCheckRes
 // returns (connect-error)
 func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.ConnKeywords) error {
 	conn.Infof(ctx, "connectInternal %s\n", conn.GetName())
-	client, _, err := remote.ConnectToClient(ctx, conn.Opts, nil, 0, connFlags)
+	client, hostIdentity, _, err := remote.ConnectToClientWithHostIdentity(ctx, conn.Opts, nil, 0, connFlags)
 	if err != nil {
 		conn.Infof(ctx, "ERROR ConnectToClient: %s\n", remote.SimpleMessageFromPossibleConnectionError(err))
 		log.Printf("error: failed to connect to client %s: %s\n", conn.GetName(), err)
 		return err
+	}
+	if client == nil || !hostIdentity.MatchesClient(client) {
+		if client != nil {
+			_ = client.Close()
+		}
+		return fmt.Errorf("SSH host identity was not bound to the connected transport")
 	}
 	conn.WithLock(func() {
 		if conn.Monitor != nil {
@@ -964,6 +982,7 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.Con
 			conn.Monitor = nil
 		}
 		conn.Client = client
+		conn.hostIdentity = hostIdentity
 		conn.ConnHealthStatus = ConnHealthStatus_Good
 		conn.Monitor = MakeConnMonitor(conn, client)
 	})
@@ -971,7 +990,7 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.Con
 		defer func() {
 			panichandler.PanicHandler("conncontroller:waitForDisconnect", recover())
 		}()
-		conn.waitForDisconnect()
+		conn.waitForDisconnect(client)
 	}()
 	fmtAddr := knownhosts.Normalize(fmt.Sprintf("%s@%s", client.User(), client.RemoteAddr().String()))
 	conn.Infof(ctx, "normalized knownhosts address: %s\n", fmtAddr)
@@ -996,9 +1015,7 @@ func (conn *SSHConn) connectInternal(ctx context.Context, connFlags *wconfig.Con
 	return nil
 }
 
-func (conn *SSHConn) waitForDisconnect() {
-	defer conn.FireConnChangeEvent()
-	client := conn.GetClient()
+func (conn *SSHConn) waitForDisconnect(client *ssh.Client) {
 	if client == nil {
 		return
 	}
@@ -1008,20 +1025,32 @@ func (conn *SSHConn) waitForDisconnect() {
 	} else {
 		log.Printf("[conn:%s] client.Wait() completed (clean disconnect)", conn.GetName())
 	}
-	conn.lifecycleLock.Lock()
-	defer conn.lifecycleLock.Unlock()
-	conn.WithLock(func() {
-		// disconnects happen for a variety of reasons (like network, etc. and are typically transient)
-		// so we just set the status to "disconnected" here (not error)
-		// don't overwrite any existing error (or error status)
-		if err != nil && conn.Error == "" {
-			conn.Error = err.Error()
+	var disconnected bool
+	func() {
+		conn.lifecycleLock.Lock()
+		defer conn.lifecycleLock.Unlock()
+		conn.WithLock(func() {
+			if conn.Client != client {
+				return
+			}
+			// disconnects happen for a variety of reasons (like network, etc. and are typically transient)
+			// so we just set the status to "disconnected" here (not error)
+			// don't overwrite any existing error (or error status)
+			if err != nil && conn.Error == "" {
+				conn.Error = err.Error()
+			}
+			if conn.Status != Status_Error {
+				conn.Status = Status_Disconnected
+			}
+			disconnected = true
+		})
+		if disconnected {
+			conn.closeInternal_withlifecyclelock()
 		}
-		if conn.Status != Status_Error {
-			conn.Status = Status_Disconnected
-		}
-	})
-	conn.closeInternal_withlifecyclelock()
+	}()
+	if disconnected {
+		conn.FireConnChangeEvent()
+	}
 }
 
 func (conn *SSHConn) SetWshError(err error) {

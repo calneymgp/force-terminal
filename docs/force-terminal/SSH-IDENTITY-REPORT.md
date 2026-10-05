@@ -1,0 +1,13 @@
+# SSH host identity capture
+
+`remote.ConnectToClient` keeps its existing signature and behavior. The new `ConnectToClientWithHostIdentity` returns an opaque `SSHHostIdentity` only when the final target's complete host-key callback returns nil, SSH authentication completes, and the returned client's session ID is nonempty. The identity contains the SHA-256 fingerprint of the accepted key and a private hash binding it to that SSH session. It does not retain the raw session ID.
+
+ProxyJump hops continue through the legacy path without the collector. Capture is attached only to the final target callback. A host-key callback rejection, panic, missing callback/key/session ID, dial error, or later SSH authentication failure returns no identity. Panic payloads are not copied into callback errors or logs. Known-hosts selection, TOFU prompts, and authentication are unchanged.
+
+`conncontroller.SSHConn` installs the client and identity under the same lock. `GetHostIdentity` returns it only while the connection is connected and the stored session binding matches the current client. A new connection attempt and connection cleanup clear the stored identity. Disconnect waiters retain the exact client they observed and cannot close a later replacement. The identity is in-memory only and is not included in status DTOs or RPC payloads.
+
+The fingerprint identifies the exact key accepted by the callback, not a physical machine. Host aliases using the same accepted key share that key fingerprint but have distinct session bindings; alternate keys, key rotation, and renewed host certificates can produce different fingerprints for one machine. A future host-side writer lease still needs to identify the execution UID and canonical checkout root and consolidate aliases and accepted-key variants.
+
+This identity describes the final SSH transport; it does not bind a WSH RPC response to that same session. The current `startConnServer` bootstrap signs a JWT context containing the connection and route ID, but not the SSH session binding. Checking the SSH identity before and after an RPC, or accepting an echoed caller nonce, does not rule out a stale or rebound WSH route. A future preparation stager must carry and verify the session binding through the authenticated bootstrap context or SSH channel. This capture alone is not a remote preparation capability.
+
+Focused tests use generated keys and an ephemeral loopback SSH server only. They cover accepted/rejected/panicking/missing callbacks, missing session IDs, distinct keys and sessions, and the case where host-key verification succeeds but SSH authentication fails.

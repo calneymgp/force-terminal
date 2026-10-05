@@ -654,13 +654,7 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 		}
 	}
 
-	waveHostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) (outErr error) {
-		defer func() {
-			panicErr := panichandler.PanicHandler("sshclient:wave-hostkey-callback", recover())
-			if panicErr != nil {
-				outErr = panicErr
-			}
-		}()
+	waveHostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 		err := basicCallback(hostname, remote, key)
 		if err == nil {
 			// success
@@ -751,7 +745,7 @@ func createHostKeyCallback(ctx context.Context, sshKeywords *wconfig.ConnKeyword
 		return updatedCallback(hostname, remote, key)
 	}
 
-	return waveHostKeyCallback, hostKeyAlgorithms, nil
+	return protectHostKeyCallback(waveHostKeyCallback), hostKeyAlgorithms, nil
 }
 
 func createClientConfig(connCtx context.Context, sshKeywords *wconfig.ConnKeywords, debugInfo *ConnectionDebugInfo) (*ssh.ClientConfig, error) {
@@ -868,7 +862,46 @@ func connectInternal(ctx context.Context, networkAddr string, clientConfig *ssh.
 	return ssh.NewClient(c, chans, reqs), nil
 }
 
+func connectInternalWithHostIdentity(ctx context.Context, networkAddr string, clientConfig *ssh.ClientConfig, currentClient *ssh.Client, identityCollector *sshHostIdentityCollector) (*ssh.Client, SSHHostIdentity, error) {
+	if identityCollector == nil {
+		return nil, SSHHostIdentity{}, errors.New("SSH host identity collector is unavailable")
+	}
+	if clientConfig == nil || clientConfig.HostKeyCallback == nil {
+		identityCollector.clear()
+		return nil, SSHHostIdentity{}, errors.New("SSH host key callback is unavailable")
+	}
+	clientConfig.HostKeyCallback = identityCollector.wrap(clientConfig.HostKeyCallback)
+	client, err := connectInternal(ctx, networkAddr, clientConfig, currentClient)
+	if err != nil {
+		identityCollector.clear()
+		if client != nil {
+			_ = client.Close()
+		}
+		return nil, SSHHostIdentity{}, err
+	}
+	if client == nil {
+		identityCollector.clear()
+		return nil, SSHHostIdentity{}, errors.New("SSH connection returned no client")
+	}
+	identity, ok := identityCollector.identityForSession(client.SessionID())
+	if !ok {
+		identityCollector.clear()
+		_ = client.Close()
+		return nil, SSHHostIdentity{}, errors.New("SSH host identity could not be bound to the completed session")
+	}
+	return client, identity, nil
+}
+
 func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32, connFlags *wconfig.ConnKeywords) (*ssh.Client, int32, error) {
+	client, _, jumpNum, err := connectToClient(connCtx, opts, currentClient, jumpNum, connFlags, nil)
+	return client, jumpNum, err
+}
+
+func ConnectToClientWithHostIdentity(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32, connFlags *wconfig.ConnKeywords) (*ssh.Client, SSHHostIdentity, int32, error) {
+	return connectToClient(connCtx, opts, currentClient, jumpNum, connFlags, &sshHostIdentityCollector{})
+}
+
+func connectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.Client, jumpNum int32, connFlags *wconfig.ConnKeywords, identityCollector *sshHostIdentityCollector) (*ssh.Client, SSHHostIdentity, int32, error) {
 	blocklogger.Infof(connCtx, "[conndebug] ConnectToClient %s (jump:%d)...\n", opts.String(), jumpNum)
 	debugInfo := &ConnectionDebugInfo{
 		CurrentClient: currentClient,
@@ -876,7 +909,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		JumpNum:       jumpNum,
 	}
 	if jumpNum > SshProxyJumpMaxDepth {
-		return nil, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.Errorf(ConnErrCode_ProxyDepth, "ProxyJump %d exceeds Wave's max depth of %d", jumpNum, SshProxyJumpMaxDepth)}
+		return nil, SSHHostIdentity{}, jumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.Errorf(ConnErrCode_ProxyDepth, "ProxyJump %d exceeds Wave's max depth of %d", jumpNum, SshProxyJumpMaxDepth)}
 	}
 
 	rawName := opts.String()
@@ -892,14 +925,14 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		sshConfigKeywords, err = findSshDefaults(opts.SSHHost)
 		if err != nil {
 			err = utilds.MakeCodedError(ConnErrCode_ConfigDefault, fmt.Errorf("cannot determine default config keywords: %w", err))
-			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+			return nil, SSHHostIdentity{}, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
 	} else {
 		var err error
 		sshConfigKeywords, err = findSshConfigKeywords(opts.SSHHost)
 		if err != nil {
 			err = utilds.MakeCodedError(ConnErrCode_ConfigParse, fmt.Errorf("cannot determine config keywords: %w", err))
-			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+			return nil, SSHHostIdentity{}, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 		}
 	}
 
@@ -930,7 +963,7 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 	for _, proxyName := range sshKeywords.SshProxyJump {
 		proxyOpts, err := ParseOpts(proxyName)
 		if err != nil {
-			return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.MakeCodedError(ConnErrCode_ProxyParse, err)}
+			return nil, SSHHostIdentity{}, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: utilds.MakeCodedError(ConnErrCode_ProxyParse, err)}
 		}
 
 		// ensure no overflow (this will likely never happen)
@@ -939,23 +972,29 @@ func ConnectToClient(connCtx context.Context, opts *SSHOpts, currentClient *ssh.
 		}
 
 		// do not apply supplied keywords to proxies - ssh config must be used for that
-		debugInfo.CurrentClient, jumpNum, err = ConnectToClient(connCtx, proxyOpts, debugInfo.CurrentClient, jumpNum, &wconfig.ConnKeywords{})
+		debugInfo.CurrentClient, _, jumpNum, err = connectToClient(connCtx, proxyOpts, debugInfo.CurrentClient, jumpNum, &wconfig.ConnKeywords{}, nil)
 		if err != nil {
 			// do not add a context on a recursive call
 			// (this can cause a recursive nested context that's arbitrarily deep)
-			return nil, jumpNum, err
+			return nil, SSHHostIdentity{}, jumpNum, err
 		}
 	}
 	clientConfig, err := createClientConfig(connCtx, sshKeywords, debugInfo)
 	if err != nil {
-		return nil, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+		return nil, SSHHostIdentity{}, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
 	}
 	networkAddr := utilfn.SafeDeref(sshKeywords.SshHostName) + ":" + utilfn.SafeDeref(sshKeywords.SshPort)
-	client, err := connectInternal(connCtx, networkAddr, clientConfig, debugInfo.CurrentClient)
-	if err != nil {
-		return client, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+	var client *ssh.Client
+	var hostIdentity SSHHostIdentity
+	if identityCollector == nil {
+		client, err = connectInternal(connCtx, networkAddr, clientConfig, debugInfo.CurrentClient)
+	} else {
+		client, hostIdentity, err = connectInternalWithHostIdentity(connCtx, networkAddr, clientConfig, debugInfo.CurrentClient, identityCollector)
 	}
-	return client, debugInfo.JumpNum, nil
+	if err != nil {
+		return client, hostIdentity, debugInfo.JumpNum, ConnectionError{ConnectionDebugInfo: debugInfo, Err: err}
+	}
+	return client, hostIdentity, debugInfo.JumpNum, nil
 }
 
 // note that a `var == "yes"` will default to false
