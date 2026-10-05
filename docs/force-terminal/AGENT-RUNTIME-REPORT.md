@@ -20,8 +20,8 @@ Verificação em 5 de outubro de 2026:
 
 | Verificação | Resultado |
 |---|---|
-| Go: `wstore`, `wcore`, `blockcontroller`, `shellexec`, `updateguard`, `cmd/server`, Force/Object/Workspace services e `wshserver` | Aprovado |
-| `-race`: Force/Object services, `blockcontroller`, `shellexec`, `wcore` e `wshserver` | Aprovado após isolar as fixtures do gravador periódico |
+| Go (Linux): `wstore`, `wcore`, `blockcontroller`, `shellexec`, `updateguard`, `cmd/server`, Force/Object/Workspace services e `wshserver` | Aprovado |
+| `-race` (Linux): Force/Object services, `blockcontroller`, `shellexec`, `wcore` e `wshserver` | Aprovado após isolar as fixtures do gravador periódico |
 | `filestore`, Force service e controller depois da alteração das fixtures | Aprovado; inicialização normal mantém o gravador periódico |
 | Geração TS/Go/schema e `npx tsc --noEmit` | Aprovado |
 | Seis arquivos Vitest de perfil, updater, guardas e ações de agentes | 40 testes aprovados |
@@ -29,6 +29,8 @@ Verificação em 5 de outubro de 2026:
 | Build Electron de produção e backend `osusergo,sqlite_omit_load_extension` | Aprovado |
 | `force-agent-smoke.mjs` no Linux, aplicativo completo com CLI fictício | 9/9 fluxos aprovados; relatório em `/tmp/force-agent-smoke-reviewed-20261005/report.json` |
 | Regressão `force-catalog-smoke.mjs` no Linux | 8/8 fluxos aprovados com o painel de agentes integrado |
+
+O primeiro build macOS desta etapa ([37259242057](https://github.com/calneymgp/force-terminal/actions/runs/37259242057)) parou antes do pacote por duas expectativas de fixture: `/var` versus `/private/var` no cwd e um filho de shell que permaneceu no grupo após a saída do CLI. A reserva permaneceu corretamente incerta. Os testes foram corrigidos para usar caminho físico e um CLI fictício que encerra/recolhe seu próprio filho; o teste separado de filho sobrevivente continua exigindo reserva retida. O pacote novo depende de outra execução macOS aprovada.
 
 O roteiro `scripts/force-agent-smoke.mjs` usa o aplicativo Electron e backend reais, com perfil descartável e CLI fictício. Verifica criação pela interface, um único processo em clique repetido, contexto congelado, fechamento/reabertura sem início automático, reconexão no mesmo bloco/UUID e cadastro inerte de SSH/Codex. Nenhum provedor ou host SSH é chamado.
 

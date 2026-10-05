@@ -138,6 +138,11 @@ func TestClaudeLaunchLocalStartAndResume(t *testing.T) {
 	if err := os.Mkdir(cwd, 0700); err != nil {
 		t.Fatal(err)
 	}
+	// macOS aliases /var to /private/var; the child reports its physical cwd.
+	cwd, err := filepath.EvalSymlinks(cwd)
+	if err != nil {
+		t.Fatal(err)
+	}
 	current, err := user.Current()
 	if err != nil {
 		t.Fatal(err)

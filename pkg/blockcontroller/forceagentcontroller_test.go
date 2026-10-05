@@ -9,11 +9,13 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/shirou/gopsutil/v4/process"
 	"github.com/wavetermdev/waveterm/pkg/filestore"
 	"github.com/wavetermdev/waveterm/pkg/shellexec"
 	"github.com/wavetermdev/waveterm/pkg/wavebase"
@@ -201,10 +203,12 @@ func TestForceAgentStopWaitsForExitEvidenceAndOutputDrain(t *testing.T) {
 	ctx, v := forceControllerFixture(t)
 	executable := filepath.Join(v.RootPath, "fake agent")
 	childPIDFile := filepath.Join(v.RootPath, "child-pid")
+	// This fixture cooperatively reaps its own child. Background shells handle
+	// PTY hangup differently across OSes; a survivor must remain uncertain.
 	script := "#!/bin/sh\n" +
-		"(while :; do /bin/sleep 1; done) </dev/null >/dev/null 2>&1 &\n" +
-		"printf '%s' \"$!\" > '" + childPIDFile + "'\n" +
-		"trap 'printf FINAL_OUTPUT; exit 0' TERM\n" +
+		"/bin/sleep 30 </dev/null >/dev/null 2>&1 &\n" +
+		"child=$!\nprintf '%s' \"$child\" > '" + childPIDFile + "'\n" +
+		"trap 'kill \"$child\"; wait \"$child\"; printf FINAL_OUTPUT; exit 0' TERM\n" +
 		"printf READY\nwhile :; do IFS= read -r line; done\n"
 	if err := os.WriteFile(executable, []byte(script), 0700); err != nil {
 		t.Fatal(err)
@@ -224,6 +228,17 @@ func TestForceAgentStopWaitsForExitEvidenceAndOutputDrain(t *testing.T) {
 			t.Fatal("fake agent did not become ready")
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+	childPIDBytes, err := os.ReadFile(childPIDFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	childPID, err := strconv.Atoi(strings.TrimSpace(string(childPIDBytes)))
+	if err != nil || childPID < 1 {
+		t.Fatalf("invalid fixture child PID: %q %v", childPIDBytes, err)
+	}
+	if exists, err := process.PidExists(int32(childPID)); err != nil || !exists {
+		t.Fatalf("fixture child was not alive before Stop: %v %v", exists, err)
 	}
 	getController(v.BlockID).Stop(true, Status_Done, false)
 	select {
