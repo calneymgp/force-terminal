@@ -129,6 +129,10 @@ class WorkspaceLayoutModel {
         return globalStore.get(atoms.workspace)?.oid ?? "";
     }
 
+    private getLayoutWidth(): number {
+        return this.panelContainerRef?.clientWidth || window.innerWidth;
+    }
+
     private getPanelOpenAtom(): jotai.Atom<boolean> {
         return getOrefMetaKeyAtom(WOS.makeORef("tab", this.getTabId()), "waveai:panelopen");
     }
@@ -223,7 +227,7 @@ class WorkspaceLayoutModel {
 
     handleOuterPanelLayout(sizes: number[]): void {
         if (this.inResize) return;
-        const windowWidth = window.innerWidth;
+        const windowWidth = this.getLayoutWidth();
         const newLeftGroupPx = (sizes[0] / 100) * windowWidth;
 
         if (this.vtabVisible && this.aiPanelVisible) {
@@ -246,7 +250,7 @@ class WorkspaceLayoutModel {
         if (this.inResize) return;
         if (!this.vtabVisible || !this.aiPanelVisible) return;
 
-        const windowWidth = window.innerWidth;
+        const windowWidth = this.getLayoutWidth();
         const vtabW = this.getResolvedVTabWidth();
         const aiW = this.getResolvedAIWidth(windowWidth);
         const leftGroupW = vtabW + aiW;
@@ -268,7 +272,7 @@ class WorkspaceLayoutModel {
     }
 
     handleWindowResize(): void {
-        this.commitLayouts(window.innerWidth);
+        this.commitLayouts(this.getLayoutWidth());
     }
 
     // ---- Registration & sync ----
@@ -277,7 +281,7 @@ class WorkspaceLayoutModel {
         const savedVTabWidth = globalStore.get(this.getVTabBarWidthAtom());
         if (savedVTabWidth != null && savedVTabWidth > 0 && savedVTabWidth !== this.vtabWidth) {
             this.vtabWidth = savedVTabWidth;
-            this.commitLayouts(window.innerWidth);
+            this.commitLayouts(this.getLayoutWidth());
         }
     }
 
@@ -300,7 +304,7 @@ class WorkspaceLayoutModel {
         this.vtabPanelWrapperRef = vtabPanelWrapperRef ?? null;
         this.vtabVisible = showLeftTabBar ?? false;
         this.syncPanelCollapse();
-        this.commitLayouts(window.innerWidth);
+        this.commitLayouts(this.getLayoutWidth());
     }
 
     private syncPanelCollapse(): void {
@@ -344,7 +348,7 @@ class WorkspaceLayoutModel {
 
     updateWrapperWidth(): void {
         if (!this.aiPanelWrapperRef) return;
-        const width = this.getResolvedAIWidth(window.innerWidth);
+        const width = this.getResolvedAIWidth(this.getLayoutWidth());
         this.aiPanelWrapperRef.style.width = `${width}px`;
     }
 
@@ -355,7 +359,7 @@ class WorkspaceLayoutModel {
     }
 
     getAIPanelWidth(): number {
-        return this.getResolvedAIWidth(window.innerWidth);
+        return this.getResolvedAIWidth(this.getLayoutWidth());
     }
 
     // ---- Initial percentage helpers (used by workspace.tsx for defaultSize) ----
@@ -403,7 +407,7 @@ class WorkspaceLayoutModel {
         });
         this.enableTransitions(250);
         this.syncPanelCollapse();
-        this.commitLayouts(window.innerWidth);
+        this.commitLayouts(this.getLayoutWidth());
 
         if (visible) {
             if (!opts?.nofocus) {
@@ -431,7 +435,7 @@ class WorkspaceLayoutModel {
         this.vtabVisible = showLeftTabBar;
         this.enableTransitions(250);
         this.syncPanelCollapse();
-        this.commitLayouts(window.innerWidth);
+        this.commitLayouts(this.getLayoutWidth());
     }
 }
 

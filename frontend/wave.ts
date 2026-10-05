@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { App } from "@/app/app";
+import { getForceCatalogUpdateReasons } from "@/app/force/force-catalog-model";
 import { loadMonaco } from "@/app/monaco/monaco-env";
 import { loadBadges } from "@/app/store/badge";
 import { GlobalModel } from "@/app/store/global-model";
@@ -68,6 +69,7 @@ async function initBare() {
     getApi().onBuilderInit(initBuilderWrap);
     getApi().onPrepareForUpdate(async () => {
         const result = await prepareLoadedModels(getAllBlockComponentModels(), globalStore.get);
+        result.reasons.push(...getForceCatalogUpdateReasons());
         const builder = BuilderAppPanelModel.getInstance();
         if (builder.initialized) {
             const appId = globalStore.get(atoms.builderAppId);

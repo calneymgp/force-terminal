@@ -57,10 +57,13 @@ jobs:
           mounted=false
           codesign --verify --deep --strict "$fixture/Force Terminal.app"
           node scripts/force-smoke-mac.mjs "$fixture/Force Terminal.app" smoke-results
+          node scripts/force-catalog-smoke.mjs smoke-catalog-results "$fixture/Force Terminal.app"
       - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: force-terminal-mac-runtime-smoke
-          path: smoke-results
+          path: |
+            smoke-results
+            smoke-catalog-results
           if-no-files-found: warn
           retention-days: 7

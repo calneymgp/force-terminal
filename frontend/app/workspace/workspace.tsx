@@ -3,6 +3,7 @@
 
 import { AIPanel } from "@/app/aipanel/aipanel";
 import { ErrorBoundary } from "@/app/element/errorboundary";
+import { ForceSidebar } from "@/app/force/force-sidebar";
 import { CenteredDiv } from "@/app/element/quickelems";
 import { ModalsRenderer } from "@/app/modals/modalsrenderer";
 import { TabBar } from "@/app/tab/tabbar";
@@ -111,7 +112,9 @@ const WorkspaceElem = memo(() => {
         <div className="flex flex-col w-full flex-grow overflow-hidden">
             {!(showLeftTabBar && isMacOS()) && <TabBar key={ws.oid} workspace={ws} noTabs={showLeftTabBar} />}
             {showLeftTabBar && isMacOS() && <MacOSTabBarSpacer />}
-            <div ref={panelContainerRef} className="flex flex-row flex-grow overflow-hidden">
+            <div className="flex flex-row flex-grow overflow-hidden">
+                <ForceSidebar workspace={ws} />
+                <div ref={panelContainerRef} className="flex flex-row flex-grow min-w-0 overflow-hidden" data-testid="force-layout">
                 <ErrorBoundary key={tabId}>
                     <PanelGroup
                         direction="horizontal"
@@ -166,6 +169,7 @@ const WorkspaceElem = memo(() => {
                     </PanelGroup>
                     <ModalsRenderer />
                 </ErrorBoundary>
+                </div>
             </div>
         </div>
     );

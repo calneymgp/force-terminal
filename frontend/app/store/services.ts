@@ -69,6 +69,40 @@ export class ClientServiceType {
 
 export const ClientService = new ClientServiceType();
 
+// forceservice.ForceService (force)
+export class ForceServiceType {
+    waveEnv: WaveEnv;
+
+    constructor(waveEnv?: WaveEnv) {
+        this.waveEnv = waveEnv;
+    }
+
+    // @returns object updates
+    ArchiveProfile(id: string, expectedVersion: number, archived: boolean): Promise<void> {
+        return callBackendService(this?.waveEnv, "force", "ArchiveProfile", Array.from(arguments))
+    }
+
+    // @returns object updates
+    ArchiveProject(id: string, expectedVersion: number, archived: boolean): Promise<void> {
+        return callBackendService(this?.waveEnv, "force", "ArchiveProject", Array.from(arguments))
+    }
+    GetCatalog(): Promise<ForceCatalog> {
+        return callBackendService(this?.waveEnv, "force", "GetCatalog", Array.from(arguments))
+    }
+
+    // @returns object updates
+    SaveProfile(input: ForceProfileInput): Promise<ForceAgentProfile> {
+        return callBackendService(this?.waveEnv, "force", "SaveProfile", Array.from(arguments))
+    }
+
+    // @returns object updates
+    SaveProject(input: ForceProjectInput): Promise<ForceProject> {
+        return callBackendService(this?.waveEnv, "force", "SaveProject", Array.from(arguments))
+    }
+}
+
+export const ForceService = new ForceServiceType();
+
 // objectservice.ObjectService (object)
 export class ObjectServiceType {
     waveEnv: WaveEnv;
@@ -217,6 +251,7 @@ export const WorkspaceService = new WorkspaceServiceType();
 export const AllServiceTypes = {
     "block": BlockServiceType,
     "client": ClientServiceType,
+    "force": ForceServiceType,
     "object": ObjectServiceType,
     "userinput": UserInputServiceType,
     "window": WindowServiceType,
@@ -226,6 +261,7 @@ export const AllServiceTypes = {
 export const AllServiceImpls = {
     "block": BlockService,
     "client": ClientService,
+    "force": ForceService,
     "object": ObjectService,
     "userinput": UserInputService,
     "window": WindowService,

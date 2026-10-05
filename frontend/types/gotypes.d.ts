@@ -1015,6 +1015,56 @@ declare global {
         termlastcommand?: string;
     };
 
+    // waveobj.ForceAgentProfile
+    type ForceAgentProfile = WaveObj & {
+        title: string;
+        icon: string;
+        systemprompt: string;
+        adapter: string;
+        archived: boolean;
+        createdat: number;
+        updatedat: number;
+    };
+
+    // forceservice.ForceCatalog
+    type ForceCatalog = {
+        projects: ForceProject[];
+        profiles: ForceAgentProfile[];
+    };
+
+    // forceservice.ForceProfileInput
+    type ForceProfileInput = {
+        id: string;
+        expectedversion: number;
+        creationkey: string;
+        title: string;
+        icon: string;
+        systemprompt: string;
+        adapter: string;
+    };
+
+    // waveobj.ForceProject
+    type ForceProject = WaveObj & {
+        name: string;
+        icon: string;
+        connection: string;
+        rootpath: string;
+        archived: boolean;
+        createdat: number;
+        updatedat: number;
+    };
+
+    // forceservice.ForceProjectInput
+    type ForceProjectInput = {
+        id: string;
+        expectedversion: number;
+        creationkey: string;
+        name: string;
+        icon: string;
+        connection: string;
+        rootpath: string;
+    };
+
     // wconfig.FullConfigType
     type FullConfigType = {
         settings: SettingsType;
