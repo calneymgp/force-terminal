@@ -149,7 +149,7 @@ export function ForceAgentPanel({ project, profiles, tabID }: { project: Catalog
     const focus = (instance: AgentInstance) => void run(instance.oid, () => forceAgentWorkflow.focus(instance.oid));
 
     return <section aria-labelledby="force-agents-title" className="force-agent-section">
-        <div className="force-section-head"><h2 id="force-agents-title">Agentes</h2><button type="button" className="force-icon-button" onClick={() => setCreating(true)} disabled={!!busy || !tabID} aria-label="Novo agente" title="Novo agente"><i className="fa-solid fa-plus" /></button></div>
+        <div className="force-section-head"><h2 id="force-agents-title">Agentes</h2><button type="button" className="force-new-agent-button force-primary-button" onClick={() => setCreating(true)} disabled={!!busy || !tabID} aria-label="Novo agente" title={tabID ? "Novo agente" : "Abra uma aba para criar um agente"}><i className="fa-solid fa-plus" aria-hidden="true" /> Novo agente</button></div>
         {listError && <p className="force-sidebar-error" role="alert">{listError} <button type="button" onClick={() => void refresh()}>Tentar novamente</button></p>}
         {error && <p className="force-sidebar-error" role="alert">{error}</p>}
         {loading && instances.length === 0 ? <p className="force-empty">Carregando agentes…</p> : instances.length === 0 ? <p className="force-empty">Crie um agente para este projeto.</p> :

@@ -181,13 +181,35 @@ try {
     assert.equal((await catalog(cdp)).projects.length, 0);
     assert.ok((await prepare(app)).reasons.some(reason => /projeto/i.test(reason)));
     await field(cdp, 'Pasta raiz', dirs.alpha); await submitTwice(cdp); await noEditor(cdp);
+    await until(() => cdp.evaluate('document.querySelector(".force-list [aria-current=true] strong")?.textContent === "Alpha"'), 'new project automatically selected');
+    assert.equal(await cdp.evaluate('Boolean(document.querySelector(".force-agent-section"))'), true);
     assert.equal((await prepare(app)).reasons.some(reason => /projeto|perfil/i.test(reason)), false);
     for (const [name, cwd] of [['Beta', dirs.beta], ['Ops', '/srv/force-smoke']]) {
         await click(cdp, 'Novo projeto'); await field(cdp, 'Nome do projeto', name);
         if (name === 'Ops') { await field(cdp, 'Local/SSH', 'ssh'); await field(cdp, 'Conexão SSH', 'nobody@force-smoke.invalid'); }
         await field(cdp, 'Pasta raiz', cwd);
-        await click(cdp, 'Salvar projeto'); await noEditor(cdp);
+        if (name === 'Beta') {
+            await cdp.evaluate(`window.__forceCreateSetMeta=window.RpcApi.SetMetaCommand;window.RpcApi.SetMetaCommand=async()=>{throw new Error('New project selection failure (smoke)')};true`);
+        }
+        await click(cdp, 'Salvar projeto');
+        if (name === 'Beta') {
+            await until(() => cdp.evaluate('document.querySelector(".force-editor [role=alert]")?.textContent.includes("Projeto salvo, mas a seleção falhou")'), 'saved project selection error');
+            const beforeRetry = (await catalog(cdp)).projects.find(project => project.name === 'Beta');
+            assert.ok(beforeRetry);
+            assert.equal(await cdp.evaluate('document.querySelector(".force-list [aria-current=true] strong")?.textContent'), 'Alpha');
+            assert.equal(await cdp.evaluate('document.querySelector(".force-editor input")?.disabled'), true);
+            await cdp.evaluate('window.RpcApi.SetMetaCommand=window.__forceCreateSetMeta;delete window.__forceCreateSetMeta;true');
+            await click(cdp, 'Tentar selecionar');
+            await noEditor(cdp);
+            const afterRetry = (await catalog(cdp)).projects.filter(project => project.name === 'Beta');
+            assert.equal(afterRetry.length, 1);
+            assert.deepEqual(afterRetry[0], beforeRetry);
+            checked('selection retry retained the saved project without another save or duplicate');
+        }
+        await noEditor(cdp);
+        await until(() => cdp.evaluate(`document.querySelector('.force-list [aria-current=true] strong')?.textContent === ${JSON.stringify(name)}`), 'saved project automatically selected');
     }
+    checked('new projects became selected immediately and revealed the agent action');
     checked('UI created three local/SSH projects; invalid path kept form and blocked update');
     checked('keyboard focus stayed in dialog; repeated submit created one project');
     await selectProject(cdp, 'Alpha');

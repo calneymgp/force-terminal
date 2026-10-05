@@ -186,6 +186,7 @@ try {
     await until(() => cdp.evaluate('Boolean(document.querySelector(".force-agent-section"))'), 'project agent panel');
     assert.equal(launches().length, 0);
     checked('isolated real app; one welcome; catalog save and selection did not launch CLI');
+    assert.equal(await cdp.evaluate(`document.querySelector('button[aria-label="Novo agente"]')?.textContent.trim()`), 'Novo agente');
     await click(cdp, 'Novo agente');
     assert.equal(await cdp.evaluate('document.querySelector(".force-editor select")?.value'), profile.oid);
     assert.ok((await prepare(app)).reasons.some(reason => /agente/i.test(reason)), 'new agent dialog must defer update restart');

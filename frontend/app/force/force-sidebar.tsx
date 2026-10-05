@@ -16,6 +16,7 @@ import "./force-catalog.scss";
 type Kind = "project" | "profile";
 type Draft = { name: string; icon: string; destination: "local" | "ssh"; connection: string; rootpath: string; systemprompt: string; adapter: string };
 type Editor = { kind: Kind; original?: CatalogProject | CatalogProfile; initial: Draft };
+type ProjectSelectionResult = { ok: true } | { ok: false; error: string };
 
 const icons = ["bolt", "code", "database", "bullhorn", "wrench", "robot", "server", "folder"];
 const iconClass: Record<string, string> = {
@@ -51,9 +52,10 @@ function CatalogIcon({ icon }: { icon: string }) {
     return <i className={`fa-solid ${iconClass[icon] ?? "fa-folder"}`} aria-hidden="true" />;
 }
 
-function ForceEditor({ editor, onClose, onSaved }: { editor: Editor; onClose: () => void; onSaved: () => Promise<void> }) {
+function ForceEditor({ editor, onClose, onSaved }: { editor: Editor; onClose: () => void; onSaved: (savedProject?: CatalogProject) => Promise<void> }) {
     const [draft, setDraft] = useState<Draft>(editor.initial);
     const [saving, setSaving] = useState(false);
+    const [savedNewProject, setSavedNewProject] = useState<CatalogProject | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [creationKey] = useState(() => crypto.randomUUID());
     const savingRef = useRef(false);
@@ -61,7 +63,8 @@ function ForceEditor({ editor, onClose, onSaved }: { editor: Editor; onClose: ()
     const previousFocus = useRef(document.activeElement as HTMLElement);
     const formId = useId();
     const guardId = useId();
-    const dirty = JSON.stringify(draft) !== JSON.stringify(editor.initial);
+    const dirty = savedNewProject == null && JSON.stringify(draft) !== JSON.stringify(editor.initial);
+    const fieldsDisabled = saving || savedNewProject != null;
     const label = editor.kind === "project" ? "projeto" : "perfil";
     const original = editor.original;
 
@@ -115,13 +118,20 @@ function ForceEditor({ editor, onClose, onSaved }: { editor: Editor; onClose: ()
         setForceCatalogUpdateReason(guardId, `Salvamento de ${label} em andamento`);
         setError(null);
         try {
+            let createdProject: CatalogProject | undefined;
             if (editor.kind === "project") {
-                await ForceService.SaveProject({
+                const projectInput = {
                     id: original?.oid ?? "", expectedversion: original?.version ?? 0,
                     creationkey: original ? "" : creationKey,
                     name: draft.name.trim(), icon: draft.icon,
                     connection: draft.destination === "ssh" ? draft.connection.trim() : "", rootpath: draft.rootpath.trim(),
-                });
+                };
+                if (original) {
+                    await ForceService.SaveProject(projectInput);
+                } else {
+                    createdProject = savedNewProject ?? await ForceService.SaveProject(projectInput);
+                    if (savedNewProject == null) setSavedNewProject(createdProject);
+                }
             } else {
                 await ForceService.SaveProfile({
                     id: original?.oid ?? "", expectedversion: original?.version ?? 0,
@@ -130,7 +140,7 @@ function ForceEditor({ editor, onClose, onSaved }: { editor: Editor; onClose: ()
                     systemprompt: draft.systemprompt, adapter: draft.adapter,
                 });
             }
-            await onSaved();
+            await onSaved(createdProject);
             onClose();
         } catch (err) {
             setError(errorMessage(err));
@@ -177,30 +187,30 @@ function ForceEditor({ editor, onClose, onSaved }: { editor: Editor; onClose: ()
                         </div>
                     )}
                     <label htmlFor={`${formId}-name`}>{editor.kind === "project" ? "Nome do projeto" : "Título do perfil"}</label>
-                    <input id={`${formId}-name`} disabled={saving} autoFocus required maxLength={120} value={draft.name} onChange={(event) => set("name", event.target.value)} placeholder={editor.kind === "project" ? "Ex.: Plataforma" : "Ex.: DevOps"} />
+                    <input id={`${formId}-name`} disabled={fieldsDisabled} autoFocus required maxLength={120} value={draft.name} onChange={(event) => set("name", event.target.value)} placeholder={editor.kind === "project" ? "Ex.: Plataforma" : "Ex.: DevOps"} />
                     <label htmlFor={`${formId}-icon`}>Ícone</label>
-                    <select id={`${formId}-icon`} disabled={saving} value={draft.icon} onChange={(event) => set("icon", event.target.value)}>{icons.map((icon) => <option key={icon} value={icon}>{iconLabel[icon]}</option>)}</select>
+                    <select id={`${formId}-icon`} disabled={fieldsDisabled} value={draft.icon} onChange={(event) => set("icon", event.target.value)}>{icons.map((icon) => <option key={icon} value={icon}>{iconLabel[icon]}</option>)}</select>
                     {editor.kind === "project" ? <>
                         <label htmlFor={`${formId}-destination`}>Local/SSH</label>
-                        <select id={`${formId}-destination`} disabled={saving} value={draft.destination} onChange={(event) => set("destination", event.target.value)}>
+                        <select id={`${formId}-destination`} disabled={fieldsDisabled} value={draft.destination} onChange={(event) => set("destination", event.target.value)}>
                             <option value="local">Local</option><option value="ssh">SSH</option>
                         </select>
-                        {draft.destination === "ssh" && <><label htmlFor={`${formId}-connection`}>Conexão SSH</label><input id={`${formId}-connection`} disabled={saving} required maxLength={1024} value={draft.connection} onChange={(event) => set("connection", event.target.value)} placeholder="usuario@host ou nome da conexão" /><p className="force-hint">Somente a referência da conexão é salva. Nenhuma conexão será aberta agora.</p></>}
+                        {draft.destination === "ssh" && <><label htmlFor={`${formId}-connection`}>Conexão SSH</label><input id={`${formId}-connection`} disabled={fieldsDisabled} required maxLength={1024} value={draft.connection} onChange={(event) => set("connection", event.target.value)} placeholder="usuario@host ou nome da conexão" /><p className="force-hint">Somente a referência da conexão é salva. Nenhuma conexão será aberta agora.</p></>}
                         <label htmlFor={`${formId}-path`}>Pasta raiz</label>
-                        <input id={`${formId}-path`} disabled={saving} required maxLength={4096} value={draft.rootpath} onChange={(event) => set("rootpath", event.target.value)} placeholder={draft.destination === "ssh" ? "~/projeto ou /srv/projeto" : "/caminho/absoluto/projeto"} />
+                        <input id={`${formId}-path`} disabled={fieldsDisabled} required maxLength={4096} value={draft.rootpath} onChange={(event) => set("rootpath", event.target.value)} placeholder={draft.destination === "ssh" ? "~/projeto ou /srv/projeto" : "/caminho/absoluto/projeto"} />
                     </> : <>
                         <label htmlFor={`${formId}-adapter`}>CLI preferido</label>
-                        <select id={`${formId}-adapter`} disabled={saving} value={draft.adapter} onChange={(event) => set("adapter", event.target.value)}><option value="codex">Codex</option><option value="claude-code">Claude Code</option></select>
+                        <select id={`${formId}-adapter`} disabled={fieldsDisabled} value={draft.adapter} onChange={(event) => set("adapter", event.target.value)}><option value="codex">Codex</option><option value="claude-code">Claude Code</option></select>
                         <p className="force-hint">Esta preferência ainda não inicia um agente.</p>
                         <label htmlFor={`${formId}-prompt`}>System prompt</label>
-                        <textarea id={`${formId}-prompt`} disabled={saving} maxLength={32000} rows={7} value={draft.systemprompt} onChange={(event) => set("systemprompt", event.target.value)} placeholder="Descreva o papel deste perfil" />
+                        <textarea id={`${formId}-prompt`} disabled={fieldsDisabled} maxLength={32000} rows={7} value={draft.systemprompt} onChange={(event) => set("systemprompt", event.target.value)} placeholder="Descreva o papel deste perfil" />
                     </>}
                     {error && <p className="force-error" role="alert">{error} <span>Os dados do formulário foram preservados. Reabra o registro se houve alteração em outra janela.</span></p>}
                     <div className="force-editor-actions">
                         {original && <button type="button" className="force-text-button" onClick={toggleArchive} disabled={saving}>{original.archived ? "Reativar" : "Arquivar"}</button>}
                         <span className="force-actions-spacer" />
-                        <button type="button" className="force-secondary-button" onClick={close} disabled={saving}>Cancelar</button>
-                        <button type="submit" className="force-primary-button" disabled={saving}>{saving ? "Salvando…" : editor.kind === "project" ? "Salvar projeto" : "Salvar perfil"}</button>
+                        <button type="button" className="force-secondary-button" onClick={close} disabled={saving}>{savedNewProject ? "Fechar" : "Cancelar"}</button>
+                        <button type="submit" className="force-primary-button" disabled={saving}>{saving ? "Salvando…" : savedNewProject ? "Tentar selecionar" : editor.kind === "project" ? "Salvar projeto" : "Salvar perfil"}</button>
                     </div>
                 </form>
             </section>
@@ -223,15 +233,28 @@ export function ForceSidebar({ workspace, initialCatalog }: { workspace: Workspa
     const profiles = useMemo(() => catalog.profiles.filter((item) => showArchived || !item.archived), [catalog.profiles, showArchived]);
     const selected = catalog.projects.find((item) => item.oid === selectedId && !item.archived);
 
-    const select = async (id: string) => {
-        if (editor || selectingRef.current) return;
+    const select = async (id: string, allowEditor = false): Promise<ProjectSelectionResult> => {
+        if (editor && !allowEditor) return { ok: false, error: "Feche o editor antes de selecionar outro projeto." };
+        if (selectingRef.current) return { ok: false, error: "Outra seleção já está em andamento." };
         selectingRef.current = true;
         setSelectionError(null);
         try {
             await RpcApi.SetMetaCommand(TabRpcClient, { oref: WOS.makeORef("workspace", workspace.oid), meta: { "force:projectid": id } as MetaType });
             setSelectedId(id);
-        } catch (err) { setSelectionError(`A seleção não foi salva: ${errorMessage(err)}`); }
+            return { ok: true };
+        } catch (err) {
+            const selectionError = errorMessage(err);
+            setSelectionError(`A seleção não foi salva: ${selectionError}`);
+            return { ok: false, error: selectionError };
+        }
         finally { selectingRef.current = false; }
+    };
+
+    const refreshAfterSave = async (savedProject?: CatalogProject) => {
+        await refresh();
+        if (!savedProject) return;
+        const result = await select(savedProject.oid, true);
+        if (result.ok === false) throw new Error(`Projeto salvo, mas a seleção falhou: ${result.error}`);
     };
 
     const open = (kind: Kind, original?: CatalogProject | CatalogProfile) => setEditor({ kind, original, initial: draftFrom(kind, original) });
@@ -259,6 +282,6 @@ export function ForceSidebar({ workspace, initialCatalog }: { workspace: Workspa
             </section>
             <button type="button" className="force-archive-toggle" onClick={() => setShowArchived((value) => !value)}>{showArchived ? "Ocultar arquivados" : "Mostrar arquivados"}</button>
         </div>
-        {editor && <ForceEditor key={`${editor.kind}:${editor.original?.oid ?? "new"}`} editor={editor} onClose={() => setEditor(null)} onSaved={refresh} />}
+        {editor && <ForceEditor key={`${editor.kind}:${editor.original?.oid ?? "new"}`} editor={editor} onClose={() => setEditor(null)} onSaved={refreshAfterSave} />}
     </aside>;
 }
