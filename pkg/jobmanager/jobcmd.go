@@ -7,7 +7,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -21,8 +24,38 @@ import (
 type CmdDef struct {
 	Cmd      string
 	Args     []string
+	Cwd      string
 	Env      map[string]string
 	TermSize waveobj.TermSize
+}
+
+func makeJobCmdDef(data wshrpc.CommandStartJobData) CmdDef {
+	return CmdDef{Cmd: data.Cmd, Args: data.Args, Cwd: data.Cwd, Env: data.Env, TermSize: data.TermSize}
+}
+
+func makeJobExecCommand(cmdDef CmdDef) (*exec.Cmd, error) {
+	if cmdDef.Cwd != "" {
+		if !filepath.IsAbs(cmdDef.Cwd) || strings.ContainsAny(cmdDef.Cwd, "\x00\r\n") {
+			return nil, fmt.Errorf("invalid job working directory")
+		}
+		resolved, err := filepath.EvalSymlinks(cmdDef.Cwd)
+		if err != nil || resolved != cmdDef.Cwd {
+			return nil, fmt.Errorf("job working directory unavailable or not canonical")
+		}
+		info, err := os.Stat(resolved)
+		if err != nil || !info.IsDir() {
+			return nil, fmt.Errorf("job working directory unavailable or not canonical")
+		}
+	}
+	ecmd := exec.Command(cmdDef.Cmd, cmdDef.Args...)
+	ecmd.Dir = cmdDef.Cwd
+	if len(cmdDef.Env) > 0 {
+		ecmd.Env = make([]string, 0, len(cmdDef.Env))
+		for key, val := range cmdDef.Env {
+			ecmd.Env = append(ecmd.Env, fmt.Sprintf("%s=%s", key, val))
+		}
+	}
+	return ecmd, nil
 }
 
 type JobCmd struct {
@@ -52,12 +85,9 @@ func MakeJobCmd(jobId string, cmdDef CmdDef) (*JobCmd, error) {
 	if cmdDef.TermSize.Rows <= 0 || cmdDef.TermSize.Cols <= 0 {
 		return nil, fmt.Errorf("invalid term size: %v", cmdDef.TermSize)
 	}
-	ecmd := exec.Command(cmdDef.Cmd, cmdDef.Args...)
-	if len(cmdDef.Env) > 0 {
-		ecmd.Env = make([]string, 0, len(cmdDef.Env))
-		for key, val := range cmdDef.Env {
-			ecmd.Env = append(ecmd.Env, fmt.Sprintf("%s=%s", key, val))
-		}
+	ecmd, err := makeJobExecCommand(cmdDef)
+	if err != nil {
+		return nil, err
 	}
 	cmdPty, err := pty.StartWithSize(ecmd, &pty.Winsize{Rows: uint16(cmdDef.TermSize.Rows), Cols: uint16(cmdDef.TermSize.Cols)})
 	if err != nil {

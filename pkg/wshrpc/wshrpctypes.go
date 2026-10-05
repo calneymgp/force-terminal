@@ -741,6 +741,7 @@ type CommandAuthenticateJobManagerData struct {
 type CommandStartJobData struct {
 	Cmd        string            `json:"cmd"`
 	Args       []string          `json:"args"`
+	Cwd        string            `json:"cwd,omitempty"`
 	Env        map[string]string `json:"env"`
 	TermSize   waveobj.TermSize  `json:"termsize"`
 	StreamMeta *StreamMeta       `json:"streammeta,omitempty"`
@@ -749,6 +750,7 @@ type CommandStartJobData struct {
 type CommandRemoteStartJobData struct {
 	Cmd                string            `json:"cmd"`
 	Args               []string          `json:"args"`
+	Cwd                string            `json:"cwd,omitempty"`
 	Env                map[string]string `json:"env"`
 	TermSize           waveobj.TermSize  `json:"termsize"`
 	StreamMeta         *StreamMeta       `json:"streammeta,omitempty"`

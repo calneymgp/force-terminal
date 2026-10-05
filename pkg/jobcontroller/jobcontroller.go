@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -605,6 +606,7 @@ type StartJobParams struct {
 	JobKind  string
 	Cmd      string
 	Args     []string
+	Cwd      string
 	Env      map[string]string
 	TermSize *waveobj.TermSize
 	BlockId  string
@@ -619,6 +621,9 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	}
 	if params.Cmd == "" {
 		return "", fmt.Errorf("command is required")
+	}
+	if params.Cwd != "" && (!filepath.IsAbs(params.Cwd) || strings.ContainsAny(params.Cwd, "\x00\r\n")) {
+		return "", fmt.Errorf("invalid job working directory")
 	}
 	if params.TermSize == nil {
 		params.TermSize = &waveobj.TermSize{Rows: 24, Cols: 80}
@@ -653,6 +658,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		JobKind:          params.JobKind,
 		Cmd:              params.Cmd,
 		CmdArgs:          params.Args,
+		CmdCwd:           params.Cwd,
 		CmdEnv:           params.Env,
 		CmdTermSize:      *params.TermSize,
 		JobAuthToken:     jobAuthToken,
@@ -696,6 +702,7 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	startJobData := wshrpc.CommandRemoteStartJobData{
 		Cmd:                params.Cmd,
 		Args:               params.Args,
+		Cwd:                params.Cwd,
 		Env:                jobEnv,
 		TermSize:           *params.TermSize,
 		StreamMeta:         streamMeta,

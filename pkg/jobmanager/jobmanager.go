@@ -228,12 +228,7 @@ func (jm *JobManager) StartJob(msc *MainServerConn, data wshrpc.CommandStartJobD
 		return nil, fmt.Errorf("job already started")
 	}
 
-	cmdDef := CmdDef{
-		Cmd:      data.Cmd,
-		Args:     data.Args,
-		Env:      data.Env,
-		TermSize: data.TermSize,
-	}
+	cmdDef := makeJobCmdDef(data)
 	log.Printf("StartJob: creating job cmd for jobid=%s", jm.JobId)
 	jobCmd, err := MakeJobCmd(jm.JobId, cmdDef)
 	if err != nil {

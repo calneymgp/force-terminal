@@ -254,20 +254,7 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 		return nil, err
 	}
 
-	combinedEnv := make(map[string]string)
-	for k, v := range impl.InitialEnv {
-		combinedEnv[k] = v
-	}
-	for k, v := range data.Env {
-		combinedEnv[k] = v
-	}
-	startJobData := wshrpc.CommandStartJobData{
-		Cmd:        data.Cmd,
-		Args:       data.Args,
-		Env:        combinedEnv,
-		TermSize:   data.TermSize,
-		StreamMeta: data.StreamMeta,
-	}
+	startJobData := impl.makeCommandStartJobData(data)
 	rtnData, err := wshclient.StartJobCommand(impl.RpcClient, startJobData, &wshrpc.RpcOpts{Route: jobRouteId})
 	if err != nil {
 		cleanup()
@@ -275,6 +262,24 @@ func (impl *ServerImpl) RemoteStartJobCommand(ctx context.Context, data wshrpc.C
 	}
 
 	return rtnData, nil
+}
+
+func (impl *ServerImpl) makeCommandStartJobData(data wshrpc.CommandRemoteStartJobData) wshrpc.CommandStartJobData {
+	combinedEnv := make(map[string]string)
+	for k, v := range impl.InitialEnv {
+		combinedEnv[k] = v
+	}
+	for k, v := range data.Env {
+		combinedEnv[k] = v
+	}
+	return wshrpc.CommandStartJobData{
+		Cmd:        data.Cmd,
+		Args:       data.Args,
+		Cwd:        data.Cwd,
+		Env:        combinedEnv,
+		TermSize:   data.TermSize,
+		StreamMeta: data.StreamMeta,
+	}
 }
 
 func (impl *ServerImpl) RemoteReconnectToJobManagerCommand(ctx context.Context, data wshrpc.CommandRemoteReconnectToJobManagerData) (*wshrpc.CommandRemoteReconnectToJobManagerRtnData, error) {

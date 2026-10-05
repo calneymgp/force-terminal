@@ -325,6 +325,7 @@ type Job struct {
 	JobKind         string            `json:"jobkind"` // shell, task
 	Cmd             string            `json:"cmd"`
 	CmdArgs         []string          `json:"cmdargs,omitempty"`
+	CmdCwd          string            `json:"cmdcwd,omitempty"`
 	CmdEnv          map[string]string `json:"cmdenv,omitempty"`
 	JobAuthToken    string            `json:"jobauthtoken"` // job manger -> wave
 	AttachedBlockId string            `json:"attachedblockid,omitempty"`

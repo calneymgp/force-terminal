@@ -604,6 +604,7 @@ declare global {
     type CommandRemoteStartJobData = {
         cmd: string;
         args: string[];
+        cwd?: string;
         env: {[key: string]: string};
         termsize: TermSize;
         streammeta?: StreamMeta;
@@ -666,6 +667,7 @@ declare global {
     type CommandStartJobData = {
         cmd: string;
         args: string[];
+        cwd?: string;
         env: {[key: string]: string};
         termsize: TermSize;
         streammeta?: StreamMeta;
@@ -1164,6 +1166,7 @@ declare global {
         jobkind: string;
         cmd: string;
         cmdargs?: string[];
+        cmdcwd?: string;
         cmdenv?: {[key: string]: string};
         jobauthtoken: string;
         attachedblockid?: string;
