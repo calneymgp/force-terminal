@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getTabBadgeAtom } from "@/app/store/badge";
-import { refocusNode } from "@/app/store/global";
+import { canCloseTabWithForceAgents, refocusNode } from "@/app/store/global";
+import { waveEventSubscribeSingle } from "@/app/store/wps";
 import { getTabModelByTabId } from "@/app/store/tab-model";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { WaveEnv, WaveEnvSubset, useWaveEnv } from "@/app/waveenv/waveenv";
@@ -40,6 +41,7 @@ interface TabVProps {
     isDragging: boolean;
     tabWidth: number;
     isNew: boolean;
+    canClose?: boolean;
     badges?: Badge[] | null;
     flagColor?: string | null;
     onClick: () => void;
@@ -60,6 +62,7 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
         isDragging,
         tabWidth,
         isNew,
+        canClose = true,
         badges,
         flagColor,
         onClick,
@@ -205,14 +208,16 @@ const TabV = forwardRef<HTMLDivElement, TabVProps>((props, ref) => {
                     {displayName}
                 </div>
                 <TabBadges badges={badges} flagColor={flagColor} />
-                <Button
-                    className="ghost grey close"
-                    onClick={onClose}
-                    onMouseDown={handleMouseDownOnClose}
-                    title="Close Tab"
-                >
-                    <i className="fa fa-solid fa-xmark" />
-                </Button>
+                {canClose && (
+                    <Button
+                        className="ghost grey close"
+                        onClick={onClose}
+                        onMouseDown={handleMouseDownOnClose}
+                        title="Close Tab"
+                    >
+                        <i className="fa fa-solid fa-xmark" />
+                    </Button>
+                )}
             </div>
         </div>
     );
@@ -237,6 +242,25 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
     const { id, active, showDivider, isDragging, tabWidth, isNew, onLoaded, onSelect, onClose, onDragStart } = props;
     const env = useWaveEnv<TabEnv>();
     const [tabData, _] = env.wos.useWaveObjectValue<Tab>(makeORef("tab", id));
+    const [canClose, setCanClose] = useState(false);
+    const blockIdsKey = tabData?.blockids?.join("\u0000");
+    useEffect(() => {
+        let active = true;
+        let request = 0;
+        const refresh = () => {
+            setCanClose(false);
+            const current = ++request;
+            void canCloseTabWithForceAgents(id).then((allowed) => {
+                if (active && current === request) setCanClose(allowed);
+            });
+        };
+        if (blockIdsKey != null) refresh();
+        const unsubscribe = waveEventSubscribeSingle({ eventType: "waveobj:update", handler: (event) => {
+            if (event.data?.otype === "tab" && event.data.oid === id ||
+                event.data?.otype === "block" && tabData?.blockids?.includes(event.data.oid)) refresh();
+        } });
+        return () => { active = false; unsubscribe(); };
+    }, [id, blockIdsKey]);
     const badges = useAtomValue(getTabBadgeAtom(id, env));
 
     const rawFlagColor = tabData?.meta?.["tab:flagcolor"];
@@ -279,9 +303,9 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
         (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
             e.preventDefault();
             const menu = buildTabContextMenu(id, renameRef, onClose, env);
-            env.showContextMenu(menu, e);
+            env.showContextMenu(canClose ? menu : menu.filter((item) => item.label !== "Close Tab"), e);
         },
-        [id, onClose, env]
+        [id, onClose, env, canClose]
     );
 
     const handleRename = useCallback(
@@ -302,6 +326,7 @@ const TabInner = forwardRef<HTMLDivElement, TabProps>((props, ref) => {
             isDragging={isDragging}
             tabWidth={tabWidth}
             isNew={isNew}
+            canClose={canClose}
             badges={badges}
             flagColor={flagColor}
             onClick={handleTabClick}

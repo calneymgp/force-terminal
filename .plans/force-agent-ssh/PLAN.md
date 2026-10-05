@@ -1,0 +1,68 @@
+# Force agent SSH execution and reattachment plan
+
+> **For implementers:** Execute the unchecked slices in order, with one RED → GREEN cycle and focused fake tests per slice. This plan authorizes no real SSH connection, provider CLI invocation, credential access, or paid call. It does not close the real SSH/conversation acceptance gates.
+
+**Goal:** Start and reconnect a Claude agent on the selected SSH host under its existing user and CLI history, while keeping one durable instance, block, prompt snapshot, requested conversation UUID, and writer lease.
+
+**Sources:** [runtime plan](../force-agent-runtime/PLAN.md), [EVOLUTION priorities 3–4](../../docs/force-terminal/EVOLUTION.md), [CLI adapter contract](../../docs/force-terminal/CLI-ADAPTER-CONTRACT.md). The local runtime is already present; this plan adds only the remote path through the existing WSH connection, job manager, block, and ForceService. Read current code before each slice because local integration is concurrent.
+
+## Decisions and invariants
+
+- Reuse `jobcontroller.StartJob`, the WSH remote helper, `Job`, `Block.JobId`, `Job.AttachedBlockId`, and `ReconnectJob`. Do not add a generic supervisor or start a process during project/profile save, inert instance creation, block restore, or connection establishment.
+- Keep `HOME`, Claude config/history location, and the authenticated remote user from the remote helper's environment. Persist a non-secret fingerprint of that context and reject changed context on resume. Never store or log environment values, credentials, prompt bytes, conversation output, or session contents.
+- Execute an absolute Claude binary with an argument vector and a typed working directory. No shell interpolation of paths, prompt text, or UUID. `--session-id` and `--resume` carry the same persisted UUID; the UUID remains **requested** until independent provider evidence validates it.
+- Stage the immutable prompt on the execution host as the execution user. Its parent must be `0700`, file `0600`, written through a same-directory temporary file and atomic rename, then read back and hashed before spawn. A successful RPC alone is insufficient without these checks.
+- A disconnected connection, an `init` job, a timed-out start, or a generic `done/startup error` record does **not** prove that Claude is absent. Keep the writer lease and report **uncertain** until host-side evidence confirms process exit/absence. Never fall back from failed `--resume` to a fresh session.
+- Remote canonicalization and writer reservation use the authenticated SSH host-key identity, execution UID, and resolved checkout root; aliases and overlapping roots share a lease. A hostname string alone is insufficient. If host identity, checkout, cwd, or history context cannot be established, stop before launch. The configured root is the cwd fallback unless a shell-integration event has confirmed a later cwd.
+
+## Current seams and gaps
+
+`ClaudeRemoteStager` in `pkg/service/forceservice/claudeadapter.go` deliberately has no production SSH implementation. `RemoteMkdirCommand` creates `0755` directories, `RemoteWriteFileCommand` defaults to `0644` and writes directly, and `RemoteFileMoveCommand` only supplies a rename primitive (`pkg/wshrpc/wshremote/wshremote_file.go`). `RemoteGetInfoCommand` reports home but not UID, stable host identity, checkout, cwd, or CLI history context. `canonicalDestination` and `agentExecutionRoot` reject remote paths (`pkg/service/forceservice/agentservice.go`, `agentruntime.go`).
+
+The job path already carries `Cmd` and `Args` separately to `exec.Command`/PTY (`pkg/jobcontroller/jobcontroller.go`, `pkg/wshrpc/wshremote/wshremote_job.go`, `pkg/jobmanager/jobcmd.go`), but has no typed cwd. `StartJob` stores and attaches a `Job` before the remote call, which enables crash recovery. It can nevertheless record `done/startup error` after an RPC failure even when the child was spawned but its stream or reply failed. `ReconnectJob` checks the job-manager PID/start time, not by itself the Claude child. Job start currently logs command arguments and environment values; the job manager also logs arguments. These contracts must be tightened before Force enables SSH execution.
+
+## Slice 1 — Prepare remote destination and prompt, with zero spawn
+
+**Owner:** remote host contract: `pkg/wshrpc/wshrpctypes.go`, `pkg/wshrpc/wshremote/forceagent.go` (new), corresponding RPC client/server registration; Force adapter: `pkg/service/forceservice/claudeadapter.go` and a small `remotestage.go` (new). **Focused tests:** `pkg/wshrpc/wshremote/forceagent_test.go`, `pkg/service/forceservice/claudeadapter_test.go`.
+
+- [ ] **RED:** With an in-process fake host/filesystem and fake RPC, show that preparation launches zero jobs and rejects a symlink/checkout alias, wrong connection or UID, changed history fingerprint, missing or non-executable `claude`, unverified cwd, unsafe mode, failed rename, and readback hash mismatch. Include Unicode/spaces and a snapshot edited in the live profile after instance creation; the staged bytes still match the persisted snapshot.
+- [ ] **GREEN:** Add one narrow remote preparation RPC on the authenticated WSH route. Bind its result to the SSH connection's verified host-key identity; on that host, resolve the configured checkout and cwd, derive UID/home/history context without returning secrets, check the binary, stage and verify the prompt privately, and return the canonical destination, prompt path/hash, modes, atomic-write evidence, and cleanup handle. Bind the result to the requested connection and execution user; `ClaudeRemoteStager` accepts only that attested result. It must not accept a caller-supplied path or Boolean claims without the host-side checks. Keep the remote helper's normal environment; do not override `HOME` or `CLAUDE_CONFIG_DIR`.
+- [ ] **Proof:** Focused Go tests pass with fake transport and filesystem; a spy on job start remains at zero. Remote preparation failure leaves the instance retryable and releases only a reservation known not to have spawned.
+
+## Slice 2 — Typed cwd and safe job request
+
+**Owner:** `pkg/jobcontroller/jobcontroller.go`, `pkg/waveobj/wtype.go` (`Job`), `pkg/wshrpc/wshrpctypes.go`, `pkg/wshrpc/wshremote/wshremote_job.go`, `pkg/jobmanager/jobcmd.go`; Force orchestration only through a small job runner interface in `pkg/service/forceservice` and its tests.
+
+- [ ] **RED:** A fake job manager receives absolute executable, exact argv, typed canonical cwd, same connection/user/history fingerprint, attempt ID, and stable block ID. It rejects an omitted/changed cwd for Force, stale destination evidence, or a path outside the validated checkout. Ordinary jobs with no cwd retain existing behavior. A path containing spaces or Unicode remains one argument.
+- [ ] **GREEN:** Carry cwd through `StartJobParams` → persisted `Job` → remote start RPC → job-manager command definition → `exec.Cmd.Dir`. Validate cwd on the execution host immediately before spawn against Slice 1 evidence. Pass only the environment additions required by WSH/job transport; inherit the host's execution context, never synthesize a new CLI home. Use the existing job manager and PTY; do not wrap Claude in a shell.
+- [ ] **Proof:** Focused `jobcontroller`, `jobmanager`, and Force runner tests pass with fakes. No real SSH or CLI is invoked.
+
+## Slice 3 — Tri-state job and process evidence
+
+**Owner:** a focused Force job probe beside `pkg/jobcontroller/jobcontroller.go`, host-side inspection in `pkg/wshrpc/wshremote/wshremote_job.go`, typed response in `pkg/wshrpc/wshrpctypes.go`, and Force reconciliation in `pkg/service/forceservice/agentruntime.go`. **Tests:** narrow `jobcontroller` and `forceservice` fake-probe tests.
+
+- [ ] **RED:** Given matching job ID, connection, attached block, attempt/generation, manager PID/start time, command PID/start time, and host identity, a live remote child yields **live** and `ReconnectJob` reattaches with zero starts. Recorded child exit or host-confirmed absence yields **absent**; connection loss, `init`, PID mismatch, missing host identity, lost RPC reply, or manager-only liveness yields **uncertain**. A generic `StartJob` error or `done/startup error` cannot alone yield **absent**.
+- [ ] **GREEN:** Probe the remote manager and command separately, compare PID plus start time and host/boot identity, and combine that observation with persisted `Job` exit evidence. Return only `live`, `absent`, or `uncertain` with source and attempt identity. Match `Job.AttachedBlockId` and `Block.JobId` to the same instance before reattachment. Preserve the lease for live/uncertain; release it only on confirmed exit/absence. `ReconnectJob` stays a transport reattachment step, not proof of provider conversation identity.
+- [ ] **Proof:** Fake network drop, remote host restart, PID reuse, command exit with manager alive, and successful reattachment all produce the specified state without a new process unless absence is confirmed.
+
+## Slice 4 — Crash recovery and host-side idempotency
+
+**Owner:** `pkg/service/forceservice/agentruntime.go`/operation-history tests, `pkg/jobcontroller/jobcontroller.go`, and the narrow remote start/inspect boundary in `pkg/wshrpc/wshremote/wshremote_job.go`. Do not create a separate daemon.
+
+- [ ] **RED:** Crash after `Job` creation/`Block.JobId` attachment but before instance `JobID` persistence: recovery finds that exact job through `Block.JobId` and `Job.AttachedBlockId` and makes zero starts. Lose the remote start reply or stream after spawn: retry with the same job ID and attempt token observes the existing host process or reports **uncertain**, never spawns twice. Two windows and start-versus-reconnect with distinct request keys serialize to one generation/job. A confirmed dead job permits exactly one `--resume` attempt with the saved UUID, host/user/history/cwd and snapshot; resume failure never invokes `--session-id`.
+- [ ] **GREEN:** Persist generation, attempt token, requested UUID, snapshot/hash, destination evidence, and the job/block binding before issuing remote start. Make the host-side start boundary idempotent by job ID plus attempt token, with a durable private launch receipt/lock before child creation and host inspection on retry. If a crash falls between receipt and trustworthy process evidence, return **uncertain** rather than guessing absence. Reconcile instance `JobID` from the block/job binding under the existing per-instance lock and writer lease; only a confirmed absent prior attempt may allocate a new job for exact resume.
+- [ ] **Proof:** Inject failures at each persistence/RPC/stream boundary in fake tests, reopen the store, and assert one logical block, one requested UUID, no duplicate process, and stable request-key receipts.
+
+## Slice 5 — Logs, errors, and code-ready gate
+
+**Owner:** `pkg/jobcontroller/jobcontroller.go`, `pkg/jobmanager/mainserverconn.go`, `pkg/wshrpc/wshremote/wshremote_job.go`, Force safe-error mapping, and focused log-capture tests. Do not touch user credentials or existing history.
+
+- [ ] **RED:** Put distinctive secret-like sentinels in fake prompt, environment, path-sensitive test data, and fake error text. Capture application/job-manager logs, persisted `Job`, operation result, and event payloads through start, timeout, reconnect, and failure; assert no prompt bytes, environment values, auth token, conversation content, or raw remote error text appears. Assert status remains **uncertain** where the start outcome is ambiguous.
+- [ ] **GREEN:** Remove argument/environment-value logging from the agent launch path and redact shared job logs where they can carry sensitive values. Persist only non-secret command/reference/evidence fields needed for replay and diagnosis; report stable safe error codes. Do not discard PID/start/attempt/job evidence needed for reconciliation.
+- [ ] **Proof:** Run the focused Go suites for `wshremote`, `jobmanager`, `jobcontroller`, and `forceservice`, plus repository build/type generation checks required by changed RPC types. Record fake-only results. Do not label this as SSH or provider acceptance.
+
+## Execution order and ownership
+
+Implement **1 → 2 → 3 → 4 → 5**. Slice 1 owns remote preparation and adapter evidence; Slice 2 owns typed cwd/argv transport; Slice 3 owns liveness semantics; Slice 4 owns Force operation and crash recovery; Slice 5 owns shared logging and the code-ready gate. Coordinate edits to shared `wshrpctypes.go`, `jobcontroller.go`, and `wshremote_job.go` sequentially; preserve concurrent local runtime and frontend work. Each slice has its own failing test, minimal implementation, passing focused test, and review before the next slice. No generated bindings are hand-edited.
+
+The real acceptance remains open: with separate authorization, exercise a controlled SSH host, notebook shutdown while the remote job lives, remote host reboot, network loss, and an actual Claude conversation resumed by the exact UUID with visible prior context. A fake can prove only the **requested** ID and process/job behavior. Installed macOS/M5, Keychain/coexistence, and update acceptance from `EVOLUTION.md` remain separate.

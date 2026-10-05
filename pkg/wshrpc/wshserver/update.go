@@ -45,6 +45,10 @@ func (ws *WshServer) GetUpdateBlockersCommand(ctx context.Context, data wshrpc.C
 	if err := requireUpdateCoordinator(ctx); err != nil {
 		return nil, err
 	}
+	return collectUpdateBlockers(ctx, data)
+}
+
+func collectUpdateBlockers(ctx context.Context, data wshrpc.CommandGetUpdateBlockersData) ([]string, error) {
 	controllers := make([]updateguard.Controller, 0)
 	for _, status := range blockcontroller.GetAllBlockControllerRuntimeStatuses() {
 		block, err := wstore.DBMustGet[*waveobj.Block](ctx, status.BlockId)
@@ -66,6 +70,16 @@ func (ws *WshServer) GetUpdateBlockersCommand(ctx context.Context, data wshrpc.C
 		jobs = append(jobs, updateguard.Job{ID: job.OID, BlockID: job.AttachedBlockId, Kind: job.JobKind, State: job.JobManagerStatus, PID: job.CmdPid, ExitTS: job.CmdExitTs})
 	}
 	reasons := updateguard.Blockers(controllers, jobs, data.VerifiedIdleBlocks)
+	storedAgents, err := wstore.DBGetAllObjsByType[*waveobj.ForceAgentInstance](ctx, waveobj.OType_ForceAgentInstance)
+	if err != nil {
+		return nil, fmt.Errorf("cannot verify persisted agents: %w", err)
+	}
+	agents := make([]updateguard.Agent, 0, len(storedAgents))
+	for _, agent := range storedAgents {
+		agents = append(agents, updateguard.Agent{BlockID: agent.BlockID, Title: agent.TitleSnapshot,
+			State: agent.Status, Phase: agent.OperationPhase, WriterLeaseKey: agent.WriterLeaseKey})
+	}
+	reasons = append(reasons, updateguard.AgentBlockers(agents)...)
 	sort.Strings(reasons)
 	return reasons, nil
 }

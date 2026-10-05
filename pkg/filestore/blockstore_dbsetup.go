@@ -31,6 +31,25 @@ var globalDB *sqlx.DB
 var useTestingDb bool // just for testing (forces GetDB() to return an in-memory db)
 
 func InitFilestore() error {
+	return initFilestore(true)
+}
+
+// InitFilestoreForTesting initializes a fresh fixture without a periodic
+// flusher that would outlive its database. Call only in serial tests after
+// every controller using the previous fixture has been stopped and awaited.
+func InitFilestoreForTesting() error {
+	if globalDB != nil {
+		if err := globalDB.Close(); err != nil {
+			return err
+		}
+	}
+	WFS.Lock.Lock()
+	WFS.Cache = make(map[cacheKey]*CacheEntry)
+	WFS.Lock.Unlock()
+	return initFilestore(false)
+}
+
+func initFilestore(startFlusher bool) error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
 	var err error
@@ -42,7 +61,7 @@ func InitFilestore() error {
 	if err != nil {
 		return err
 	}
-	if !stopFlush.Load() {
+	if startFlusher && !stopFlush.Load() {
 		go WFS.runFlusher()
 	}
 	log.Printf("filestore initialized\n")

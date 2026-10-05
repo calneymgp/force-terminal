@@ -116,6 +116,9 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     const magnifiedBlockOpacity = jotai.useAtomValue(magnifiedBlockOpacityAtom);
     const connBtnRef = React.useRef<HTMLDivElement>(null);
     const connName = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "connection"));
+    const blockData = jotai.useAtomValue(waveEnv.wos.getWaveObjectAtom<Block>(makeORef("block", nodeModel.blockId)));
+    const blockReady = blockData != null;
+    const agentInstanceID = blockData?.meta?.["force:agentinstanceid"];
     const iconColor = jotai.useAtomValue(waveEnv.getBlockMetaKeyAtom(nodeModel.blockId, "icon:color"));
     const noHeader = util.useAtomValueSafe(viewModel?.noHeader);
 
@@ -138,7 +141,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
     }, [manageConnection]);
     React.useEffect(() => {
         // on mount, if manageConnection, call ConnEnsure
-        if (!manageConnection || preview) {
+        if (!blockReady || !manageConnection || preview || agentInstanceID) {
             return;
         }
         if (!util.isLocalConnName(connName)) {
@@ -153,7 +156,7 @@ const BlockFrame_Default_Component = (props: BlockFrameProps) => {
                     console.log("error ensuring connection", nodeModel.blockId, connName, e);
                 });
         }
-    }, [manageConnection, connName]);
+    }, [blockReady, manageConnection, connName, agentInstanceID, preview]);
 
     const viewIconElem = getViewIconElem(viewIconUnion, iconColor);
     let innerStyle: React.CSSProperties = {};

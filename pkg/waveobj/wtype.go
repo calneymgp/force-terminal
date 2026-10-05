@@ -22,33 +22,35 @@ const (
 )
 
 const (
-	OType_Client            = "client"
-	OType_Window            = "window"
-	OType_Workspace         = "workspace"
-	OType_Tab               = "tab"
-	OType_LayoutState       = "layout"
-	OType_Block             = "block"
-	OType_MainServer        = "mainserver"
-	OType_Job               = "job"
-	OType_ForceProject      = "forceproject"
-	OType_ForceAgentProfile = "forceagentprofile"
-	OType_Temp              = "temp"
-	OType_Builder           = "builder" // not persisted to DB
+	OType_Client             = "client"
+	OType_Window             = "window"
+	OType_Workspace          = "workspace"
+	OType_Tab                = "tab"
+	OType_LayoutState        = "layout"
+	OType_Block              = "block"
+	OType_MainServer         = "mainserver"
+	OType_Job                = "job"
+	OType_ForceProject       = "forceproject"
+	OType_ForceAgentProfile  = "forceagentprofile"
+	OType_ForceAgentInstance = "forceagentinstance"
+	OType_Temp               = "temp"
+	OType_Builder            = "builder" // not persisted to DB
 )
 
 var ValidOTypes = map[string]bool{
-	OType_Client:            true,
-	OType_Window:            true,
-	OType_Workspace:         true,
-	OType_Tab:               true,
-	OType_LayoutState:       true,
-	OType_Block:             true,
-	OType_MainServer:        true,
-	OType_Job:               true,
-	OType_ForceProject:      true,
-	OType_ForceAgentProfile: true,
-	OType_Temp:              true,
-	OType_Builder:           true,
+	OType_Client:             true,
+	OType_Window:             true,
+	OType_Workspace:          true,
+	OType_Tab:                true,
+	OType_LayoutState:        true,
+	OType_Block:              true,
+	OType_MainServer:         true,
+	OType_Job:                true,
+	OType_ForceProject:       true,
+	OType_ForceAgentProfile:  true,
+	OType_ForceAgentInstance: true,
+	OType_Temp:               true,
+	OType_Builder:            true,
 }
 
 type WaveObjUpdate struct {
@@ -370,6 +372,7 @@ func AllWaveObjTypes() []reflect.Type {
 		reflect.TypeOf(&Job{}),
 		reflect.TypeOf(&ForceProject{}),
 		reflect.TypeOf(&ForceAgentProfile{}),
+		reflect.TypeOf(&ForceAgentInstance{}),
 	}
 }
 

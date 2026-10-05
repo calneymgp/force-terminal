@@ -79,7 +79,13 @@ func init() {
 func doShutdown(reason string) {
 	shutdownOnce.Do(func() {
 		log.Printf("shutting down: %s\n", reason)
-		go blockcontroller.StopAllBlockControllersForShutdown()
+		// Agent monitors acknowledge process exit, final output, and instance
+		// persistence before the file-store flush starts.
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), 2*time.Second)
+		if err := blockcontroller.StopAllBlockControllersForShutdown(stopCtx); err != nil {
+			log.Printf("controller shutdown could not be confirmed: %v\n", err)
+		}
+		stopCancel()
 		shutdownActivityUpdate()
 		clearTempFiles()
 		// Persist before potentially slow network work. Waiting for a periodic

@@ -224,6 +224,11 @@ func (ws *WshServer) ResolveIdsCommand(ctx context.Context, data wshrpc.CommandR
 
 func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.CommandCreateBlockData) (*waveobj.ORef, error) {
 	ctx = waveobj.ContextWithUpdates(ctx)
+	if data.TargetBlockId != "" && data.TargetAction == "replace" {
+		if err := wstore.RejectForceBlockDeletion(ctx, data.TargetBlockId); err != nil {
+			return nil, err
+		}
+	}
 	tabId := data.TabId
 	blockData, err := wcore.CreateBlock(ctx, tabId, data.BlockDef, data.RtOpts)
 	if err != nil {
@@ -241,6 +246,9 @@ func (ws *WshServer) CreateBlockCommand(ctx context.Context, data wshrpc.Command
 			}
 			err = wcore.DeleteBlock(ctx, data.TargetBlockId, false)
 			if err != nil {
+				// The target may have become a Force binding after the preflight.
+				// Do not strand the newly created replacement in the tab.
+				_ = wcore.DeleteBlock(ctx, blockData.OID, false)
 				return nil, fmt.Errorf("error deleting block (trying to do block replace): %w", err)
 			}
 		case "splitright":
@@ -307,8 +315,7 @@ func (ws *WshServer) CreateSubBlockCommand(ctx context.Context, data wshrpc.Comm
 }
 
 func (ws *WshServer) ControllerDestroyCommand(ctx context.Context, blockId string) error {
-	blockcontroller.DestroyBlockController(blockId)
-	return nil
+	return blockcontroller.DestroyBlockControllerFromClient(ctx, blockId)
 }
 
 func (ws *WshServer) ControllerResyncCommand(ctx context.Context, data wshrpc.CommandControllerResyncData) error {

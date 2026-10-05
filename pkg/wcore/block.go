@@ -28,6 +28,9 @@ func CreateSubBlock(ctx context.Context, blockId string, blockDef *waveobj.Block
 	if blockDef.Meta == nil || blockDef.Meta.GetString(waveobj.MetaKey_View, "") == "" {
 		return nil, fmt.Errorf("no view provided for new block")
 	}
+	if err := wstore.RejectGenericForceBlockCreate(blockDef.Meta); err != nil {
+		return nil, err
+	}
 	blockData, err := createSubBlockObj(ctx, blockId, blockDef)
 	if err != nil {
 		return nil, fmt.Errorf("error creating sub block: %w", err)
@@ -40,6 +43,11 @@ func CreateSubBlock(ctx context.Context, blockId string, blockDef *waveobj.Block
 
 func createSubBlockObj(ctx context.Context, parentBlockId string, blockDef *waveobj.BlockDef) (*waveobj.Block, error) {
 	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) (*waveobj.Block, error) {
+		if id, err := wstore.ForceAgentForBlock(tx.Context(), parentBlockId); err != nil {
+			return nil, err
+		} else if id != "" {
+			return nil, fmt.Errorf("Force agent terminal cannot accept a generic subblock")
+		}
 		parentBlock, _ := wstore.DBGet[*waveobj.Block](tx.Context(), parentBlockId)
 		if parentBlock == nil {
 			return nil, fmt.Errorf("parent block not found: %q", parentBlockId)
@@ -80,6 +88,9 @@ func CreateBlockWithTelemetry(ctx context.Context, tabId string, blockDef *waveo
 	}
 	if blockDef.Meta == nil || blockDef.Meta.GetString(waveobj.MetaKey_View, "") == "" {
 		return nil, fmt.Errorf("no view provided for new block")
+	}
+	if err := wstore.RejectGenericForceBlockCreate(blockDef.Meta); err != nil {
+		return nil, err
 	}
 	blockData, err := createBlockObj(ctx, tabId, blockDef, rtOpts)
 	if err != nil {
@@ -155,6 +166,9 @@ func createBlockObj(ctx context.Context, tabId string, blockDef *waveobj.BlockDe
 // recursive: if true, will recursively close parent tab, window, workspace, if they are empty.
 // Returns new active tab id, error.
 func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
+	if err := wstore.RejectForceBlockDeletion(ctx, blockId); err != nil {
+		return err
+	}
 	block, err := wstore.DBGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
@@ -197,6 +211,9 @@ func DeleteBlock(ctx context.Context, blockId string, recursive bool) error {
 // returns the updated block count for the parent object
 func deleteBlockObj(ctx context.Context, blockId string) (int, error) {
 	return wstore.WithTxRtn(ctx, func(tx *wstore.TxWrap) (int, error) {
+		if err := wstore.RejectForceBlockDeletion(tx.Context(), blockId); err != nil {
+			return -1, err
+		}
 		block, err := wstore.DBGet[*waveobj.Block](tx.Context(), blockId)
 		if err != nil {
 			return -1, fmt.Errorf("error getting block: %w", err)

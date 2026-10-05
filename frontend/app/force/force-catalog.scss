@@ -67,5 +67,22 @@
 .force-secondary-button { border: 1px solid #55555b; color: #eeeef0; background: #29292d; }
 .force-primary-button { border: 1px solid #fff; color: #17171a; background: #fff; }
 
+.force-agent-section { border-bottom: 1px solid #303034; padding-bottom: 7px; }
+.force-agent-list { margin: 0; padding: 0 11px; list-style: none; display: grid; gap: 7px; }
+.force-agent-list li { display: grid; gap: 5px; min-width: 0; padding: 10px; border: 1px solid #38383d; border-radius: 8px; background: #1b1b1e; }
+.force-agent-list li > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.force-agent-status { color: #c4c4ca; font-size: 11px; }
+.force-agent-cause { color: #ffb0b0; line-height: 1.4; }
+.force-agent-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+.force-agent-actions button { border: 1px solid #55555b; border-radius: 6px; padding: 5px 7px; color: #eeeef0; background: #29292d; font-size: 10px; cursor: pointer; }
+.force-agent-actions button:hover { background: #39393d; }
+.force-agent-actions button:disabled { opacity: .5; cursor: default; }
+.force-agent-details { color: #aaaab1; font-size: 10px; }
+.force-agent-details summary { cursor: pointer; }
+.force-agent-details dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 7px; margin: 7px 0 0; }
+.force-agent-details dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.force-agent-details code { font-size: 10px; }
+.force-agent-unavailable { margin: 6px 0; color: #c9c9cf; line-height: 1.45; }
+
 @media (max-width: 1000px) { .force-sidebar { width: 236px; min-width: 210px; max-width: 27vw; } }
 @media (max-width: 700px) { .force-sidebar { width: 200px; min-width: 176px; max-width: 32vw; } .force-sidebar-head { padding: 16px 11px; } }

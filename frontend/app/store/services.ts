@@ -86,8 +86,26 @@ export class ForceServiceType {
     ArchiveProject(id: string, expectedVersion: number, archived: boolean): Promise<void> {
         return callBackendService(this?.waveEnv, "force", "ArchiveProject", Array.from(arguments))
     }
+
+    // @returns object updates
+    CreateAgentInstance(input: ForceAgentInstanceInput): Promise<ForceAgentInstance> {
+        return callBackendService(this?.waveEnv, "force", "CreateAgentInstance", Array.from(arguments))
+    }
+
+    // @returns object updates
+    FocusAgentTerminal(instanceID: string): Promise<void> {
+        return callBackendService(this?.waveEnv, "force", "FocusAgentTerminal", Array.from(arguments))
+    }
     GetCatalog(): Promise<ForceCatalog> {
         return callBackendService(this?.waveEnv, "force", "GetCatalog", Array.from(arguments))
+    }
+    ListAgentInstances(projectID: string): Promise<ForceAgentInstance[]> {
+        return callBackendService(this?.waveEnv, "force", "ListAgentInstances", Array.from(arguments))
+    }
+
+    // @returns object updates
+    ReconnectAgent(instanceID: string, requestKey: string): Promise<ForceAgentOperationResult> {
+        return callBackendService(this?.waveEnv, "force", "ReconnectAgent", Array.from(arguments))
     }
 
     // @returns object updates
@@ -98,6 +116,16 @@ export class ForceServiceType {
     // @returns object updates
     SaveProject(input: ForceProjectInput): Promise<ForceProject> {
         return callBackendService(this?.waveEnv, "force", "SaveProject", Array.from(arguments))
+    }
+
+    // @returns object updates
+    StartAgent(instanceID: string, requestKey: string): Promise<ForceAgentOperationResult> {
+        return callBackendService(this?.waveEnv, "force", "StartAgent", Array.from(arguments))
+    }
+
+    // @returns object updates
+    StartNewSession(instanceID: string, requestKey: string): Promise<ForceAgentOperationResult> {
+        return callBackendService(this?.waveEnv, "force", "StartNewSession", Array.from(arguments))
     }
 }
 

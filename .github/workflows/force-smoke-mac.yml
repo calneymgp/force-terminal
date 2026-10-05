@@ -58,6 +58,7 @@ jobs:
           codesign --verify --deep --strict "$fixture/Force Terminal.app"
           node scripts/force-smoke-mac.mjs "$fixture/Force Terminal.app" smoke-results
           node scripts/force-catalog-smoke.mjs smoke-catalog-results "$fixture/Force Terminal.app"
+          node scripts/force-agent-smoke.mjs smoke-agent-results "$fixture/Force Terminal.app"
       - uses: actions/upload-artifact@v5
         if: always()
         with:
@@ -65,5 +66,6 @@ jobs:
           path: |
             smoke-results
             smoke-catalog-results
+            smoke-agent-results
           if-no-files-found: warn
           retention-days: 7

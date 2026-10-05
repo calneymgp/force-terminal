@@ -359,11 +359,41 @@ function getApi(): ElectronApi {
     return (window as any).api;
 }
 
+function isBlockSafeForGenericAction(blockId: string): boolean {
+    if (!blockId) return false;
+    const block = globalStore.get(WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId)));
+    return block?.otype === "block" && block?.meta != null && !block.meta["force:agentinstanceid"];
+}
+
+async function canCloseTabWithForceAgents(tabId: string): Promise<boolean> {
+    try {
+        const tab = (await ObjectService.GetObject(WOS.makeORef("tab", tabId))) as Tab;
+        if (tab?.otype !== "tab" || !Array.isArray(tab.blockids)) return false;
+        if (tab.blockids.length === 0) return true;
+        const blocks = await ObjectService.GetObjects(tab.blockids.map((id) => WOS.makeORef("block", id)));
+        if (blocks?.length !== tab.blockids.length) return false;
+        const byId = new Map(blocks.map((block) => [block?.oid, block]));
+        return tab.blockids.every((id) => {
+            const block = byId.get(id) as Block | undefined;
+            return block?.otype === "block" && block?.meta != null && !block.meta["force:agentinstanceid"];
+        });
+    } catch {
+        return false;
+    }
+}
+
+function assertGenericBlockActionAllowed(blockId: string, blockDef?: BlockDef) {
+    if (!isBlockSafeForGenericAction(blockId) || blockDef?.meta?.["force:agentinstanceid"]) {
+        throw new Error("O terminal do agente só pode ser alterado pelo painel Agentes.");
+    }
+}
+
 async function createBlockSplitHorizontally(
     blockDef: BlockDef,
     targetBlockId: string,
     position: "before" | "after"
 ): Promise<string> {
+    assertGenericBlockActionAllowed(targetBlockId, blockDef);
     const layoutModel = getLayoutModelForStaticTab();
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
@@ -387,6 +417,7 @@ async function createBlockSplitVertically(
     targetBlockId: string,
     position: "before" | "after"
 ): Promise<string> {
+    assertGenericBlockActionAllowed(targetBlockId, blockDef);
     const layoutModel = getLayoutModelForStaticTab();
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
@@ -424,6 +455,7 @@ async function createBlock(blockDef: BlockDef, magnified = false, ephemeral = fa
 }
 
 async function replaceBlock(blockId: string, blockDef: BlockDef, focus: boolean): Promise<string> {
+    assertGenericBlockActionAllowed(blockId, blockDef);
     const layoutModel = getLayoutModelForStaticTab();
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const newBlockId = await ObjectService.CreateBlock(blockDef, rtOpts);
@@ -711,6 +743,8 @@ export {
     refocusNode,
     registerBlockComponentModel,
     replaceBlock,
+    isBlockSafeForGenericAction,
+    canCloseTabWithForceAgents,
     setActiveTab,
     setNodeFocus,
     setPlatform,

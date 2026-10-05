@@ -133,6 +133,9 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 		log.Printf("Ignoring DeleteWorkspace for workspace %s as it is named\n", workspaceId)
 		return false, "", nil
 	}
+	if err := wstore.RejectForceWorkspaceDeletion(ctx, workspaceId); err != nil {
+		return false, "", err
+	}
 
 	for _, tabId := range workspace.TabIds {
 		log.Printf("deleting tab %s\n", tabId)
@@ -142,7 +145,12 @@ func DeleteWorkspace(ctx context.Context, workspaceId string, force bool) (bool,
 		}
 	}
 	windowId, _ := wstore.DBFindWindowForWorkspaceId(ctx, workspaceId)
-	err = wstore.DBDelete(ctx, waveobj.OType_Workspace, workspaceId)
+	err = wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		if err := wstore.RejectForceWorkspaceDeletion(tx.Context(), workspaceId); err != nil {
+			return err
+		}
+		return wstore.DBDelete(tx.Context(), waveobj.OType_Workspace, workspaceId)
+	})
 	if err != nil {
 		return false, "", fmt.Errorf("error deleting workspace: %w", err)
 	}
@@ -295,6 +303,9 @@ func createTabObj(ctx context.Context, workspaceId string, name string, meta wav
 // recursive: if true, will recursively close parent window, workspace, if they are empty.
 // Returns new active tab id, error.
 func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive bool) (string, error) {
+	if err := wstore.RejectForceTabDeletion(ctx, tabId); err != nil {
+		return "", err
+	}
 	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
 	if ws == nil {
 		return "", fmt.Errorf("workspace not found: %q", workspaceId)
@@ -329,10 +340,22 @@ func DeleteTab(ctx context.Context, workspaceId string, tabId string, recursive 
 	}
 	ws.ActiveTabId = newActiveTabId
 
-	wstore.DBUpdate(ctx, ws)
-	wstore.DBDelete(ctx, waveobj.OType_Tab, tabId)
-	if tab != nil {
-		wstore.DBDelete(ctx, waveobj.OType_LayoutState, tab.LayoutState)
+	if err := wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		if err := wstore.RejectForceTabDeletion(tx.Context(), tabId); err != nil {
+			return err
+		}
+		if err := wstore.DBUpdate(tx.Context(), ws); err != nil {
+			return err
+		}
+		if err := wstore.DBDelete(tx.Context(), waveobj.OType_Tab, tabId); err != nil {
+			return err
+		}
+		if tab != nil {
+			return wstore.DBDelete(tx.Context(), waveobj.OType_LayoutState, tab.LayoutState)
+		}
+		return nil
+	}); err != nil {
+		return "", err
 	}
 
 	// if no tabs remaining, close window
@@ -374,13 +397,20 @@ func SendActiveTabUpdate(ctx context.Context, workspaceId string, newActiveTabId
 }
 
 func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []string) error {
-	ws, _ := wstore.DBGet[*waveobj.Workspace](ctx, workspaceId)
-	if ws == nil {
-		return fmt.Errorf("workspace not found: %q", workspaceId)
-	}
-	ws.TabIds = tabIds
-	wstore.DBUpdate(ctx, ws)
-	return nil
+	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		ws, err := wstore.DBGet[*waveobj.Workspace](tx.Context(), workspaceId)
+		if err != nil {
+			return err
+		}
+		if ws == nil {
+			return fmt.Errorf("workspace not found: %q", workspaceId)
+		}
+		ws.TabIds = tabIds
+		if err := wstore.ValidateGenericObjectUpdate(tx.Context(), ws); err != nil {
+			return err
+		}
+		return wstore.DBUpdate(tx.Context(), ws)
+	})
 }
 
 // ListWorkspaces returns only "saved" workspaces (Name, Icon, and Color all

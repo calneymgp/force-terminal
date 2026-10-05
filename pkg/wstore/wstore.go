@@ -59,6 +59,9 @@ func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta waveobj.MetaM
 		if oref.IsEmpty() {
 			return fmt.Errorf("empty object reference")
 		}
+		if oref.OType == waveobj.OType_ForceAgentInstance {
+			return fmt.Errorf("Force agent instance cannot be updated by a generic action")
+		}
 		obj, _ := DBGetORef(tx.Context(), oref)
 		if obj == nil {
 			return ErrNotFound
@@ -68,8 +71,12 @@ func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta waveobj.MetaM
 			objMeta = make(map[string]any)
 		}
 		newMeta := waveobj.MergeMeta(objMeta, meta, mergeSpecial)
+		if block, ok := obj.(*waveobj.Block); ok {
+			if err := rejectForceBlockMetaChange(tx.Context(), block, newMeta); err != nil {
+				return err
+			}
+		}
 		waveobj.SetMeta(obj, newMeta)
-		DBUpdate(tx.Context(), obj)
-		return nil
+		return DBUpdate(tx.Context(), obj)
 	})
 }

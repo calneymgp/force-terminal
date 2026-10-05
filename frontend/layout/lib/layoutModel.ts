@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { FocusManager } from "@/app/store/focusManager";
-import { getSettingsKeyAtom } from "@/app/store/global";
+import { getSettingsKeyAtom, isBlockSafeForGenericAction } from "@/app/store/global";
 import { BlockService } from "@/app/store/services";
 import * as WOS from "@/app/store/wos";
 import { atomWithThrottle, boundNumber, fireAndForget } from "@/util/util";
@@ -1289,6 +1289,7 @@ export class LayoutModel {
             // The ephemeral node is not in the tree, so we need to handle it separately.
             const ephemeralNode = this.getter(this.ephemeralNode);
             if (ephemeralNode?.id === nodeId) {
+                if (!isBlockSafeForGenericAction(ephemeralNode.data.blockId)) return;
                 this.setter(this.ephemeralNode, undefined);
                 this.treeState.focusedNodeId = undefined;
                 this.updateTree(false);
@@ -1300,6 +1301,7 @@ export class LayoutModel {
             console.error("unable to close node, cannot find it in tree", nodeId);
             return;
         }
+        if (!isBlockSafeForGenericAction(nodeToDelete.data.blockId)) return;
         if (nodeId === this.magnifiedNodeId) {
             this.magnifyNodeToggle(nodeId);
         }

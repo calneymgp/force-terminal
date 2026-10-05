@@ -7,6 +7,9 @@ import * as WOS from "@/app/store/wos";
 import { ForceService } from "@/app/store/services";
 import { disableGlobalKeybindings, enableGlobalKeybindings } from "@/app/store/keymodel";
 import { errorMessage, setForceCatalogUpdateReason, useForceCatalog, type Catalog, type CatalogProfile, type CatalogProject } from "./force-catalog-model";
+import { ForceAgentPanel } from "./force-agent-panel";
+import { atoms } from "@/store/global";
+import { useAtomValue } from "jotai";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import "./force-catalog.scss";
 
@@ -206,6 +209,7 @@ function ForceEditor({ editor, onClose, onSaved }: { editor: Editor; onClose: ()
 }
 
 export function ForceSidebar({ workspace, initialCatalog }: { workspace: Workspace; initialCatalog?: Catalog }) {
+    const tabID = useAtomValue(atoms.staticTabId);
     const { catalog, loading, error, refresh } = useForceCatalog(initialCatalog);
     const [editor, setEditor] = useState<Editor | null>(null);
     const [showArchived, setShowArchived] = useState(false);
@@ -246,6 +250,7 @@ export function ForceSidebar({ workspace, initialCatalog }: { workspace: Workspa
                 </li>)}</ul>}
             </section>
             {selected && <div className="force-selected-note"><strong>{selected.name}</strong><span>{selected.connection ? `SSH: ${selected.connection}` : "Pasta local"}</span><code>{selected.rootpath}</code><small>Os terminais e arquivos existentes continuam disponíveis ao lado.</small></div>}
+            {selected && !initialCatalog && <ForceAgentPanel key={selected.oid} project={selected} profiles={profiles.filter((profile) => !profile.archived)} tabID={tabID} />}
             <section aria-labelledby="force-profiles-title">
                 <div className="force-section-head"><h2 id="force-profiles-title">Perfis</h2><button type="button" className="force-icon-button" onClick={() => open("profile")} aria-label="Novo perfil" title="Novo perfil"><i className="fa-solid fa-plus" /></button></div>
                 {loading ? <p className="force-empty">Carregando perfis…</p> : profiles.length === 0 ? <p className="force-empty">Cadastre papéis para reutilizar entre projetos.</p> : <ul className="force-list">{profiles.map((profile) => <li key={profile.oid}>

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Tooltip } from "@/app/element/tooltip";
+import { canCloseTabWithForceAgents } from "@/app/store/global";
 import { TabRpcClient } from "@/app/store/wshrpcutil";
 import { useWaveEnv } from "@/app/waveenv/waveenv";
 import { WorkspaceLayoutModel } from "@/app/workspace/workspace-layout-model";
@@ -539,8 +540,9 @@ const TabBar = memo(({ workspace, noTabs }: TabBarProps) => {
         setNewTabIdDebounced(null);
     };
 
-    const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
+    const handleCloseTab = async (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
         event?.stopPropagation();
+        if (!(await canCloseTabWithForceAgents(tabId))) return;
         env.electron
             .closeTab(workspace.oid, tabId, confirmClose)
             .then((didClose) => {

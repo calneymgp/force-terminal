@@ -72,9 +72,9 @@ jobs:
       - name: Typecheck Electron and frontend
         run: npx tsc --noEmit
       - name: Test profile, updater and persistence guards
-        run: npx vitest run emain/force-profile.test.ts emain/updater.test.ts frontend/app/store/update-guard.test.ts
+        run: npx vitest run emain/force-profile.test.ts emain/updater.test.ts frontend/app/store/update-guard.test.ts frontend/app/force/force-agent-model.test.ts frontend/app/view/term/term-agent-safety.test.ts frontend/app/store/global-forceagent-safety.test.ts
       - name: Test Go update and isolation paths
-        run: go test -mod=readonly ./pkg/wcloud ./cmd/server ./pkg/updateguard ./pkg/filestore ./pkg/secretstore ./pkg/wstore ./pkg/service/forceservice ./pkg/wshrpc/wshserver ./pkg/wavebase ./pkg/remote/... ./pkg/wshrpc/wshremote ./pkg/util/shellutil ./pkg/wslconn ./cmd/wsh/cmd
+        run: go test -mod=readonly ./pkg/wcloud ./cmd/server ./pkg/updateguard ./pkg/filestore ./pkg/secretstore ./pkg/wstore ./pkg/wcore ./pkg/blockcontroller ./pkg/shellexec ./pkg/service/objectservice ./pkg/service/workspaceservice ./pkg/service/forceservice ./pkg/wshrpc/wshserver ./pkg/wavebase ./pkg/remote/... ./pkg/wshrpc/wshremote ./pkg/util/shellutil ./pkg/wslconn ./cmd/wsh/cmd
       - name: Validate release scripts
         run: node --test scripts/force-release*.test.mjs
       - name: Build macOS arm64

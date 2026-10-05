@@ -212,6 +212,10 @@ export class TermViewModel implements ViewModel {
             return rtn;
         });
         this.manageConnection = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            if (!blockData || blockData.meta?.["force:agentinstanceid"]) {
+                return false;
+            }
             const termMode = get(this.termMode);
             if (termMode == "vdom") {
                 return false;
@@ -300,7 +304,7 @@ export class TermViewModel implements ViewModel {
                 }
             }
 
-            if (blockData?.meta?.["controller"] != "cmd" && shellProcStatus != "done") {
+            if (blockData?.meta?.["force:agentinstanceid"] || (blockData?.meta?.["controller"] != "cmd" && shellProcStatus != "done")) {
                 return rtn;
             }
             if (connStatus?.status != "connected") {
@@ -766,7 +770,7 @@ export class TermViewModel implements ViewModel {
             return false;
         }
         const shellProcStatus = globalStore.get(this.shellProcStatus);
-        if ((shellProcStatus == "done" || shellProcStatus == "init") && keyutil.checkKeyPressed(waveEvent, "Enter")) {
+        if (!this.isForceAgentBlock() && (shellProcStatus == "done" || shellProcStatus == "init") && keyutil.checkKeyPressed(waveEvent, "Enter")) {
             fireAndForget(() => this.forceRestartController());
             return false;
         }
@@ -786,7 +790,15 @@ export class TermViewModel implements ViewModel {
         });
     }
 
+    private isForceAgentBlock(): boolean {
+        const blockData = globalStore.get(this.blockAtom);
+        return !blockData || Boolean(blockData.meta?.["force:agentinstanceid"]);
+    }
+
     async forceRestartController() {
+        if (this.isForceAgentBlock()) {
+            return;
+        }
         if (globalStore.get(this.isRestarting)) {
             return;
         }
@@ -805,6 +817,9 @@ export class TermViewModel implements ViewModel {
     }
 
     async restartSessionWithDurability(isDurable: boolean) {
+        if (this.isForceAgentBlock()) {
+            return;
+        }
         await RpcApi.SetMetaCommand(TabRpcClient, {
             oref: WOS.makeORef("block", this.blockId),
             meta: { "term:durable": isDurable },
@@ -923,6 +938,7 @@ export class TermViewModel implements ViewModel {
         const defaultAllowBracketedPaste = globalStore.get(getSettingsKeyAtom("term:allowbracketedpaste")) ?? true;
         const transparencyMeta = globalStore.get(getBlockMetaKeyAtom(this.blockId, "term:transparency"));
         const blockData = globalStore.get(this.blockAtom);
+        const isForceAgentBlock = this.isForceAgentBlock();
         const overrideFontSize = blockData?.meta?.["term:fontsize"];
 
         termThemeKeys.sort((a, b) => {
@@ -936,27 +952,29 @@ export class TermViewModel implements ViewModel {
         };
 
         const fullMenu: ContextMenuItem[] = [];
-        fullMenu.push({
-            label: "Split Horizontally",
-            click: () => {
-                const blockData = globalStore.get(this.blockAtom);
-                const blockDef: BlockDef = {
-                    meta: blockData?.meta || defaultTermBlockDef.meta,
-                };
-                createBlockSplitHorizontally(blockDef, this.blockId, "after");
-            },
-        });
-        fullMenu.push({
-            label: "Split Vertically",
-            click: () => {
-                const blockData = globalStore.get(this.blockAtom);
-                const blockDef: BlockDef = {
-                    meta: blockData?.meta || defaultTermBlockDef.meta,
-                };
-                createBlockSplitVertically(blockDef, this.blockId, "after");
-            },
-        });
-        fullMenu.push({ type: "separator" });
+        if (!isForceAgentBlock) {
+            fullMenu.push({
+                label: "Split Horizontally",
+                click: () => {
+                    const blockData = globalStore.get(this.blockAtom);
+                    const blockDef: BlockDef = {
+                        meta: blockData?.meta || defaultTermBlockDef.meta,
+                    };
+                    createBlockSplitHorizontally(blockDef, this.blockId, "after");
+                },
+            });
+            fullMenu.push({
+                label: "Split Vertically",
+                click: () => {
+                    const blockData = globalStore.get(this.blockAtom);
+                    const blockDef: BlockDef = {
+                        meta: blockData?.meta || defaultTermBlockDef.meta,
+                    };
+                    createBlockSplitVertically(blockDef, this.blockId, "after");
+                },
+            });
+            fullMenu.push({ type: "separator" });
+        }
 
         const lastCommand = globalStore.get(this.termRef?.current?.lastCommandAtom);
         const cwd = blockData?.meta?.["cmd:cwd"];
@@ -1230,108 +1248,112 @@ export class TermViewModel implements ViewModel {
                 },
             ],
         });
-        advancedSubmenu.push({
+        if (!isForceAgentBlock) advancedSubmenu.push({
             label: "Force Restart Controller",
             click: () => fireAndForget(() => this.forceRestartController()),
         });
-        const isClearOnStart = blockData?.meta?.["cmd:clearonstart"];
-        advancedSubmenu.push({
-            label: "Clear Output On Restart",
-            submenu: [
-                {
-                    label: "On",
-                    type: "checkbox",
-                    checked: isClearOnStart,
-                    click: () => {
-                        RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
-                            meta: { "cmd:clearonstart": true },
-                        });
+        if (!isForceAgentBlock) {
+            const isClearOnStart = blockData?.meta?.["cmd:clearonstart"];
+            advancedSubmenu.push({
+                label: "Clear Output On Restart",
+                submenu: [
+                    {
+                        label: "On",
+                        type: "checkbox",
+                        checked: isClearOnStart,
+                        click: () => {
+                            RpcApi.SetMetaCommand(TabRpcClient, {
+                                oref: WOS.makeORef("block", this.blockId),
+                                meta: { "cmd:clearonstart": true },
+                            });
+                        },
                     },
-                },
-                {
-                    label: "Off",
-                    type: "checkbox",
-                    checked: !isClearOnStart,
-                    click: () => {
-                        RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
-                            meta: { "cmd:clearonstart": false },
-                        });
+                    {
+                        label: "Off",
+                        type: "checkbox",
+                        checked: !isClearOnStart,
+                        click: () => {
+                            RpcApi.SetMetaCommand(TabRpcClient, {
+                                oref: WOS.makeORef("block", this.blockId),
+                                meta: { "cmd:clearonstart": false },
+                            });
+                        },
                     },
-                },
-            ],
-        });
-        const runOnStart = blockData?.meta?.["cmd:runonstart"];
-        advancedSubmenu.push({
-            label: "Run On Startup",
-            submenu: [
-                {
-                    label: "On",
-                    type: "checkbox",
-                    checked: runOnStart,
-                    click: () => {
-                        RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
-                            meta: { "cmd:runonstart": true },
-                        });
+                ],
+            });
+            const runOnStart = blockData?.meta?.["cmd:runonstart"];
+            advancedSubmenu.push({
+                label: "Run On Startup",
+                submenu: [
+                    {
+                        label: "On",
+                        type: "checkbox",
+                        checked: runOnStart,
+                        click: () => {
+                            RpcApi.SetMetaCommand(TabRpcClient, {
+                                oref: WOS.makeORef("block", this.blockId),
+                                meta: { "cmd:runonstart": true },
+                            });
+                        },
                     },
-                },
-                {
-                    label: "Off",
-                    type: "checkbox",
-                    checked: !runOnStart,
-                    click: () => {
-                        RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
-                            meta: { "cmd:runonstart": false },
-                        });
+                    {
+                        label: "Off",
+                        type: "checkbox",
+                        checked: !runOnStart,
+                        click: () => {
+                            RpcApi.SetMetaCommand(TabRpcClient, {
+                                oref: WOS.makeORef("block", this.blockId),
+                                meta: { "cmd:runonstart": false },
+                            });
+                        },
                     },
-                },
-            ],
-        });
+                ],
+            });
+        }
         const debugConn = blockData?.meta?.["term:conndebug"];
-        advancedSubmenu.push({
-            label: "Debug Connection",
-            submenu: [
-                {
-                    label: "Off",
-                    type: "checkbox",
-                    checked: !debugConn,
-                    click: () => {
-                        RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
-                            meta: { "term:conndebug": null },
-                        });
+        if (!isForceAgentBlock) {
+            advancedSubmenu.push({
+                label: "Debug Connection",
+                submenu: [
+                    {
+                        label: "Off",
+                        type: "checkbox",
+                        checked: !debugConn,
+                        click: () => {
+                            RpcApi.SetMetaCommand(TabRpcClient, {
+                                oref: WOS.makeORef("block", this.blockId),
+                                meta: { "term:conndebug": null },
+                            });
+                        },
                     },
-                },
-                {
-                    label: "Info",
-                    type: "checkbox",
-                    checked: debugConn == "info",
-                    click: () => {
-                        RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
-                            meta: { "term:conndebug": "info" },
-                        });
+                    {
+                        label: "Info",
+                        type: "checkbox",
+                        checked: debugConn == "info",
+                        click: () => {
+                            RpcApi.SetMetaCommand(TabRpcClient, {
+                                oref: WOS.makeORef("block", this.blockId),
+                                meta: { "term:conndebug": "info" },
+                            });
+                        },
                     },
-                },
-                {
-                    label: "Verbose",
-                    type: "checkbox",
-                    checked: debugConn == "debug",
-                    click: () => {
-                        RpcApi.SetMetaCommand(TabRpcClient, {
-                            oref: WOS.makeORef("block", this.blockId),
-                            meta: { "term:conndebug": "debug" },
-                        });
+                    {
+                        label: "Verbose",
+                        type: "checkbox",
+                        checked: debugConn == "debug",
+                        click: () => {
+                            RpcApi.SetMetaCommand(TabRpcClient, {
+                                oref: WOS.makeORef("block", this.blockId),
+                                meta: { "term:conndebug": "debug" },
+                            });
+                        },
                     },
-                },
-            ],
-        });
+                ],
+            });
+        }
 
         const isDurable = globalStore.get(getBlockTermDurableAtom(this.blockId));
-        if (isDurable) {
+        if (!isForceAgentBlock && isDurable) {
             advancedSubmenu.push({
                 label: "Session Durability",
                 submenu: [
@@ -1341,7 +1363,7 @@ export class TermViewModel implements ViewModel {
                     },
                 ],
             });
-        } else if (isDurable === false) {
+        } else if (!isForceAgentBlock && isDurable === false) {
             advancedSubmenu.push({
                 label: "Session Durability",
                 submenu: [
@@ -1357,7 +1379,7 @@ export class TermViewModel implements ViewModel {
             label: "Advanced",
             submenu: advancedSubmenu,
         });
-        if (blockData?.meta?.["term:vdomtoolbarblockid"]) {
+        if (!isForceAgentBlock && blockData?.meta?.["term:vdomtoolbarblockid"]) {
             fullMenu.push({ type: "separator" });
             fullMenu.push({
                 label: "Close Toolbar",

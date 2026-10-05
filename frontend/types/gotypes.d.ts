@@ -154,6 +154,7 @@ declare global {
         shellprocconnname?: string;
         shellprocexitcode: number;
         tsunamiport?: number;
+        forceagenterrorcode?: string;
     };
 
     // waveobj.BlockDef
@@ -1013,6 +1014,81 @@ declare global {
         connstatus?: ConnStatus;
         termshellintegrationstatus?: string;
         termlastcommand?: string;
+    };
+
+    // waveobj.ForceAgentInstance
+    type ForceAgentInstance = WaveObj & {
+        projectid: string;
+        projectversion: number;
+        profileid: string;
+        profileversion: number;
+        tabid: string;
+        blockid: string;
+        titlesnapshot: string;
+        iconsnapshot: string;
+        promptsnapshot: string;
+        prompthash: string;
+        adapter: string;
+        adapterversion: string;
+        connection: string;
+        rootpath: string;
+        clihistorycontext?: string;
+        executionroot?: string;
+        executionleaseroot?: string;
+        confirmedcwd?: string;
+        cwdsource?: string;
+        claudesessionid?: string;
+        priorclaudesessionid?: string;
+        identityevidence: string;
+        generation: number;
+        operationintent?: string;
+        operationrequestkey?: string;
+        operationphase?: string;
+        attemptid?: string;
+        waslaunched?: boolean;
+        currentsessionlaunched?: boolean;
+        localpid?: number;
+        localprocessstartts?: number;
+        localprocessgroupid?: number;
+        localprocessgroupstartts?: number;
+        localbootid?: string;
+        attemptstartedat?: number;
+        attemptfinishedat?: number;
+        attemptexitcode?: number;
+        priorattemptid?: string;
+        jobid?: string;
+        writerleasekey?: string;
+        status: string;
+        errorcode?: string;
+        createdat: number;
+        updatedat: number;
+    };
+
+    // forceservice.ForceAgentInstanceInput
+    type ForceAgentInstanceInput = {
+        projectid: string;
+        projectversion: number;
+        profileid: string;
+        profileversion: number;
+        tabid: string;
+        creationkey: string;
+    };
+
+    // forceservice.ForceAgentOperation
+    type ForceAgentOperation = {
+        generation: number;
+        requestkey: string;
+        intent: string;
+        phase: string;
+        status: string;
+        attemptid?: string;
+    };
+
+    // forceservice.ForceAgentOperationResult
+    type ForceAgentOperationResult = {
+        instance: ForceAgentInstance;
+        operation: ForceAgentOperation;
+        terminalblockid: string;
     };
 
     // waveobj.ForceAgentProfile

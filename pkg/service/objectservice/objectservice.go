@@ -154,7 +154,12 @@ func (svc *ObjectService) UpdateObject(uiContext waveobj.UIContext, waveObj wave
 	if !found {
 		return nil, fmt.Errorf("object not found: %s", oref)
 	}
-	err = wstore.DBUpdate(ctx, waveObj)
+	err = wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		if err := wstore.ValidateGenericObjectUpdate(tx.Context(), waveObj); err != nil {
+			return err
+		}
+		return wstore.DBUpdate(tx.Context(), waveObj)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("error updating object: %w", err)
 	}

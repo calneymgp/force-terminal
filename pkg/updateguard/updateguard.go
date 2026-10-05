@@ -20,6 +20,35 @@ type Job struct {
 	ExitTS  int64
 }
 
+type Agent struct {
+	BlockID        string
+	Title          string
+	State          string
+	Phase          string
+	WriterLeaseKey string
+}
+
+// A restored agent can retain an uncertain attempt without a loaded terminal
+// controller. Its durable checkpoint and lease must still prevent a restart.
+func AgentBlockers(agents []Agent) []string {
+	reasons := make([]string, 0)
+	for _, agent := range agents {
+		settled := agent.Phase == "" || agent.Phase == "prepare_failed"
+		if settled && agent.WriterLeaseKey == "" {
+			switch agent.State {
+			case "prepared", "unavailable", "exited", "resume_failed":
+				continue
+			}
+		}
+		title := agent.Title
+		if title == "" {
+			title = agent.BlockID
+		}
+		reasons = append(reasons, fmt.Sprintf("Agente %s: sessão ativa ou estado não confirmado", title))
+	}
+	return reasons
+}
+
 // A cached ready state alone is insufficient: only a fresh renderer snapshot
 // plus the current server state can exempt a running interactive shell.
 func Blockers(controllers []Controller, jobs []Job, verifiedIdleBlocks []string) []string {

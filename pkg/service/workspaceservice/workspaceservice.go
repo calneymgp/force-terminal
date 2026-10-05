@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/wavetermdev/waveterm/pkg/blockcontroller"
 	"github.com/wavetermdev/waveterm/pkg/panichandler"
 	"github.com/wavetermdev/waveterm/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/waveterm/pkg/waveobj"
@@ -217,14 +216,12 @@ func (svc *WorkspaceService) CloseTab_Meta() tsgenmeta.MethodMeta {
 // returns the new active tabid
 func (svc *WorkspaceService) CloseTab(ctx context.Context, workspaceId string, tabId string, fromElectron bool) (*CloseTabRtnType, waveobj.UpdatesRtnType, error) {
 	ctx = waveobj.ContextWithUpdates(ctx)
-	tab, err := wstore.DBGet[*waveobj.Tab](ctx, tabId)
-	if err == nil && tab != nil {
-		go func() {
-			for _, blockId := range tab.BlockIds {
-				blockcontroller.DestroyBlockController(blockId)
-			}
-		}()
+	if err := wstore.RejectForceTabDeletion(ctx, tabId); err != nil {
+		return nil, nil, err
 	}
+	// DeleteBlock sends BlockClose only after each successful deletion. The
+	// earlier eager destroy could kill a Force process before a guard rejected
+	// the tab close (or if a binding appeared after the preflight).
 	newActiveTabId, err := wcore.DeleteTab(ctx, workspaceId, tabId, true)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error closing tab: %w", err)

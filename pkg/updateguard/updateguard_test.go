@@ -47,3 +47,31 @@ func TestUnknownVerifiedIdDoesNotExemptJob(t *testing.T) {
 		t.Fatalf("unverified controller must block: %v", got)
 	}
 }
+
+func TestPersistedAgentsBlockEvenWithoutLoadedController(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		agent   Agent
+		blocked bool
+	}{
+		{"inert instance", Agent{State: "prepared"}, false},
+		{"unavailable adapter", Agent{State: "unavailable"}, false},
+		{"confirmed exit", Agent{State: "exited"}, false},
+		{"failed preparation", Agent{State: "prepared", Phase: "prepare_failed"}, false},
+		{"failed resume", Agent{State: "resume_failed"}, false},
+		{"live agent in unloaded tab", Agent{State: "running"}, true},
+		{"uncertain after restart", Agent{State: "uncertain"}, true},
+		{"durable checkpoint before process evidence", Agent{State: "prepared", Phase: "launch_requested"}, true},
+		{"reserved operation", Agent{State: "prepared", Phase: "reserved"}, true},
+		{"retained writer lease", Agent{State: "exited", WriterLeaseKey: "lease"}, true},
+		{"unrecognized state", Agent{State: "unknown"}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.agent.BlockID, tc.agent.Title = "original-block", "DevOps"
+			got := AgentBlockers([]Agent{tc.agent})
+			if (len(got) > 0) != tc.blocked {
+				t.Fatalf("blocked=%v, reasons=%v", tc.blocked, got)
+			}
+		})
+	}
+}

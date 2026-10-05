@@ -14,6 +14,7 @@ import { getBlockBadgeAtom } from "@/app/store/badge";
 import {
     createBlockSplitHorizontally,
     createBlockSplitVertically,
+    isBlockSafeForGenericAction,
     recordTEvent,
     refocusNode,
     WOS,
@@ -58,13 +59,12 @@ function handleHeaderContextMenu(
     ];
     const extraItems = viewModel?.getSettingsMenuItems?.();
     if (extraItems && extraItems.length > 0) menu.push({ type: "separator" }, ...extraItems);
-    menu.push(
-        { type: "separator" },
-        {
-            label: "Close Block",
-            click: () => uxCloseBlock(blockId),
-        }
-    );
+    if (isBlockSafeForGenericAction(blockId)) {
+        menu.push(
+            { type: "separator" },
+            { label: "Close Block", click: () => uxCloseBlock(blockId) }
+        );
+    }
     blockEnv.showContextMenu(menu, e);
 }
 
@@ -126,13 +126,15 @@ const HeaderEndIcons = React.memo(({ viewModel, nodeModel, blockId }: HeaderEndI
     const numLeafs = jotai.useAtomValue(nodeModel.numLeafs);
     const magnifyDisabled = numLeafs <= 1;
     const showSplitButtons = jotai.useAtomValue(blockEnv.getSettingsKeyAtom("term:showsplitbuttons"));
+    const blockData = jotai.useAtomValue(WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId)));
+    const genericActionsAllowed = blockData?.otype === "block" && blockData?.meta != null && !blockData.meta["force:agentinstanceid"];
 
     const endIconsElem: React.ReactElement[] = [];
 
     if (endIconButtons && endIconButtons.length > 0) {
         endIconsElem.push(...endIconButtons.map((button, idx) => <IconButton key={idx} decl={button} />));
     }
-    if (showSplitButtons && viewModel?.viewType === "term") {
+    if (genericActionsAllowed && showSplitButtons && viewModel?.viewType === "term") {
         const splitHorizontalDecl: IconButtonDecl = {
             elemtype: "iconbutton",
             icon: "columns",
@@ -195,13 +197,15 @@ const HeaderEndIcons = React.memo(({ viewModel, nodeModel, blockId }: HeaderEndI
         );
     }
 
-    const closeDecl: IconButtonDecl = {
-        elemtype: "iconbutton",
-        icon: "xmark-large",
-        title: "Close",
-        click: () => uxCloseBlock(nodeModel.blockId),
-    };
-    endIconsElem.push(<IconButton key="close" decl={closeDecl} className="block-frame-default-close" />);
+    if (genericActionsAllowed) {
+        const closeDecl: IconButtonDecl = {
+            elemtype: "iconbutton",
+            icon: "xmark-large",
+            title: "Close",
+            click: () => uxCloseBlock(nodeModel.blockId),
+        };
+        endIconsElem.push(<IconButton key="close" decl={closeDecl} className="block-frame-default-close" />);
+    }
 
     return <div className="block-frame-end-icons">{endIconsElem}</div>;
 });

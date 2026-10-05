@@ -57,12 +57,13 @@ type BlockInputUnion struct {
 }
 
 type BlockControllerRuntimeStatus struct {
-	BlockId           string `json:"blockid"`
-	Version           int64  `json:"version"`
-	ShellProcStatus   string `json:"shellprocstatus,omitempty"`
-	ShellProcConnName string `json:"shellprocconnname,omitempty"`
-	ShellProcExitCode int    `json:"shellprocexitcode"`
-	TsunamiPort       int    `json:"tsunamiport,omitempty"`
+	BlockId             string `json:"blockid"`
+	Version             int64  `json:"version"`
+	ShellProcStatus     string `json:"shellprocstatus,omitempty"`
+	ShellProcConnName   string `json:"shellprocconnname,omitempty"`
+	ShellProcExitCode   int    `json:"shellprocexitcode"`
+	TsunamiPort         int    `json:"tsunamiport,omitempty"`
+	ForceAgentErrorCode string `json:"forceagenterrorcode,omitempty"`
 }
 
 // Controller interface that all block controllers must implement
@@ -160,6 +161,17 @@ func ResyncController(ctx context.Context, tabId string, blockId string, rtOpts 
 	blockData, err := wstore.DBMustGet[*waveobj.Block](ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
+	}
+	// Agent blocks are controlled exclusively by explicit Force operations.
+	// Keep this before connection changes, force restarts and done cleanup.
+	_, existingAgent := getController(blockId).(*ForceAgentController)
+	persistedAgent, err := forceAgentIDForBlock(ctx, blockId)
+	if err != nil {
+		return err
+	}
+	if blockData.Meta.GetString(forceAgentInstanceMetaKey, "") != "" || existingAgent || persistedAgent != "" {
+		_, err := resyncForceAgent(ctx, tabId, blockData)
+		return err
 	}
 
 	controllerName := blockData.Meta.GetString(waveobj.MetaKey_Controller, "")
@@ -314,6 +326,41 @@ func DestroyBlockController(blockId string) {
 	deleteController(blockId)
 }
 
+// DestroyBlockControllerFromClient handles generic terminal restart requests.
+// The direct destroy path remains available for trusted block close/shutdown.
+// Use the resync mutex so a Force launch cannot enter between binding checks
+// and destruction.
+func DestroyBlockControllerFromClient(ctx context.Context, blockId string) error {
+	if blockId == "" {
+		return fmt.Errorf("block id is required")
+	}
+	mu := getBlockResyncMutex(blockId)
+	mu.Lock()
+	defer mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if _, force := getController(blockId).(*ForceAgentController); force {
+		return fmt.Errorf("Force agent controller requires an explicit lifecycle operation")
+	}
+	block, err := wstore.DBGet[*waveobj.Block](ctx, blockId)
+	if err != nil {
+		return err
+	}
+	if block != nil && block.Meta.GetString(forceAgentInstanceMetaKey, "") != "" {
+		return fmt.Errorf("Force agent controller requires an explicit lifecycle operation")
+	}
+	persistedAgent, err := forceAgentIDForBlock(ctx, blockId)
+	if err != nil {
+		return err
+	}
+	if persistedAgent != "" {
+		return fmt.Errorf("Force agent controller requires an explicit lifecycle operation")
+	}
+	DestroyBlockController(blockId)
+	return nil
+}
+
 func sendConnMonitorInputNotification(controller Controller) {
 	connName := controller.GetConnName()
 	if connName == "" || conncontroller.IsLocalConnName(connName) || conncontroller.IsWslConnName(connName) {
@@ -343,16 +390,27 @@ func SendInput(blockId string, inputUnion *BlockInputUnion) error {
 }
 
 // only call this on shutdown
-func StopAllBlockControllersForShutdown() {
+func StopAllBlockControllersForShutdown(ctx context.Context) error {
 	controllers := getAllControllers()
+	var pending sync.WaitGroup
 	for blockId, controller := range controllers {
 		status := controller.GetRuntimeStatus()
 		if status != nil && status.ShellProcStatus == Status_Running {
+			pending.Add(1)
 			go func(id string, c Controller) {
+				defer pending.Done()
 				c.Stop(true, Status_Done, false)
 				wstore.DeleteRTInfo(waveobj.MakeORef(waveobj.OType_Block, id))
 			}(blockId, controller)
 		}
+	}
+	done := make(chan struct{})
+	go func() { pending.Wait(); close(done) }()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 

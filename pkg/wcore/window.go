@@ -5,6 +5,7 @@ package wcore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 
@@ -134,7 +135,17 @@ func CloseWindow(ctx context.Context, windowId string, fromElectron bool) error 
 	window, err := GetWindow(ctx, windowId)
 	if err == nil {
 		log.Printf("got window %s\n", windowId)
-		deleted, _, err := DeleteWorkspace(ctx, window.WorkspaceId, false)
+		// A window may close while its durable agent context remains available
+		// for FocusAgentTerminal to open again.
+		guardErr := wstore.RejectForceWorkspaceDeletion(ctx, window.WorkspaceId)
+		if guardErr != nil && !errors.Is(guardErr, wstore.ErrForceAgentProtected) {
+			return guardErr
+		}
+		keepWorkspace := guardErr != nil
+		deleted := false
+		if !keepWorkspace {
+			deleted, _, err = DeleteWorkspace(ctx, window.WorkspaceId, false)
+		}
 		if err != nil {
 			log.Printf("error deleting workspace: %v\n", err)
 		}

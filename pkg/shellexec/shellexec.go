@@ -47,11 +47,12 @@ type CommandOptsType struct {
 }
 
 type ShellProc struct {
-	ConnName  string
-	Cmd       ConnInterface
-	CloseOnce *sync.Once
-	DoneCh    chan any // closed after proc.Wait() returns
-	WaitErr   error    // WaitErr is synchronized by DoneCh (written before DoneCh is closed) and CloseOnce
+	ConnName            string
+	Cmd                 ConnInterface
+	CloseOnce           *sync.Once
+	DoneCh              chan any // closed after proc.Wait() returns
+	WaitErr             error    // WaitErr is synchronized by DoneCh (written before DoneCh is closed) and CloseOnce
+	AgentProcessGroupID int
 }
 
 func (sp *ShellProc) Close() {

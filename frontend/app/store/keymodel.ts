@@ -5,6 +5,7 @@ import { WaveAIModel } from "@/app/aipanel/waveai-model";
 import { FocusManager } from "@/app/store/focusManager";
 import {
     atoms,
+    canCloseTabWithForceAgents,
     createBlock,
     createBlockSplitHorizontally,
     createBlockSplitVertically,
@@ -15,6 +16,7 @@ import {
     getFocusedBlockId,
     getSettingsKeyAtom,
     globalStore,
+    isBlockSafeForGenericAction,
     recordTEvent,
     refocusNode,
     replaceBlock,
@@ -128,9 +130,10 @@ function getStaticTabBlockCount(): number {
     return tabData?.blockids?.length ?? 0;
 }
 
-function simpleCloseStaticTab() {
+async function simpleCloseStaticTab() {
     const workspaceId = globalStore.get(atoms.workspaceId);
     const tabId = globalStore.get(atoms.staticTabId);
+    if (!(await canCloseTabWithForceAgents(tabId))) return;
     const confirmClose = globalStore.get(getSettingsKeyAtom("tab:confirmclose")) ?? false;
     getApi()
         .closeTab(workspaceId, tabId, confirmClose)
@@ -145,6 +148,7 @@ function simpleCloseStaticTab() {
 }
 
 function uxCloseBlock(blockId: string) {
+    if (!isBlockSafeForGenericAction(blockId)) return;
     const workspaceLayoutModel = WorkspaceLayoutModel.getInstance();
     const isAIPanelOpen = workspaceLayoutModel.getAIPanelVisible();
     if (isAIPanelOpen && getStaticTabBlockCount() === 1) {
@@ -194,7 +198,7 @@ function genericClose() {
         if (shouldSwitchToAI) {
             const layoutModel = getLayoutModelForStaticTab();
             const focusedNode = globalStore.get(layoutModel.focusedNode);
-            if (focusedNode) {
+            if (focusedNode && isBlockSafeForGenericAction(focusedNode.data.blockId)) {
                 replaceBlock(focusedNode.data.blockId, { meta: { view: "launcher" } }, false);
                 setTimeout(() => WaveAIModel.getInstance().focusInput(), 50);
                 return;
@@ -217,6 +221,7 @@ function genericClose() {
     const layoutModel = getLayoutModelForStaticTab();
     const focusedNode = globalStore.get(layoutModel.focusedNode);
     const blockId = focusedNode?.data?.blockId;
+    if (!isBlockSafeForGenericAction(blockId)) return;
     const blockAtom = blockId ? WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId)) : null;
     const blockData = blockAtom ? globalStore.get(blockAtom) : null;
     const isAIFileDiff = blockData?.meta?.view === "aifilediff";
@@ -386,6 +391,7 @@ async function handleSplitHorizontal(position: "before" | "after") {
     if (focusedNode == null) {
         return;
     }
+    if (!isBlockSafeForGenericAction(focusedNode.data.blockId)) return;
     const blockDef = getDefaultNewBlockDef();
     await createBlockSplitHorizontally(blockDef, focusedNode.data.blockId, position);
 }
@@ -396,6 +402,7 @@ async function handleSplitVertical(position: "before" | "after") {
     if (focusedNode == null) {
         return;
     }
+    if (!isBlockSafeForGenericAction(focusedNode.data.blockId)) return;
     const blockDef = getDefaultNewBlockDef();
     await createBlockSplitVertically(blockDef, focusedNode.data.blockId, position);
 }
@@ -628,6 +635,7 @@ function registerGlobalKeys() {
         if (blockId == null) {
             return true;
         }
+        if (!isBlockSafeForGenericAction(blockId)) return true;
         replaceBlock(
             blockId,
             {
