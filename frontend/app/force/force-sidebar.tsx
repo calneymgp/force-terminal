@@ -34,7 +34,7 @@ const presets = [
 ];
 
 function emptyDraft(kind: Kind): Draft {
-    return { name: "", icon: kind === "project" ? "folder" : "robot", destination: "local", connection: "", rootpath: "", systemprompt: "", adapter: "codex" };
+    return { name: "", icon: kind === "project" ? "folder" : "robot", destination: "local", connection: "", rootpath: "", systemprompt: "", adapter: "claude-code" };
 }
 
 function draftFrom(kind: Kind, item?: CatalogProject | CatalogProfile): Draft {
@@ -200,7 +200,7 @@ function ForceEditor({ editor, onClose, onSaved }: { editor: Editor; onClose: ()
                         <input id={`${formId}-path`} disabled={fieldsDisabled} required maxLength={4096} value={draft.rootpath} onChange={(event) => set("rootpath", event.target.value)} placeholder={draft.destination === "ssh" ? "~/projeto ou /srv/projeto" : "/caminho/absoluto/projeto"} />
                     </> : <>
                         <label htmlFor={`${formId}-adapter`}>CLI preferido</label>
-                        <select id={`${formId}-adapter`} disabled={fieldsDisabled} value={draft.adapter} onChange={(event) => set("adapter", event.target.value)}><option value="codex">Codex</option><option value="claude-code">Claude Code</option></select>
+                        <select id={`${formId}-adapter`} disabled={fieldsDisabled} value={draft.adapter} onChange={(event) => set("adapter", event.target.value)}><option value="claude-code">Claude Code · execução local suportada</option><option value="codex">Codex · execução ainda indisponível</option></select>
                         <p className="force-hint">Esta preferência ainda não inicia um agente.</p>
                         <label htmlFor={`${formId}-prompt`}>System prompt</label>
                         <textarea id={`${formId}-prompt`} disabled={fieldsDisabled} maxLength={32000} rows={7} value={draft.systemprompt} onChange={(event) => set("systemprompt", event.target.value)} placeholder="Descreva o papel deste perfil" />

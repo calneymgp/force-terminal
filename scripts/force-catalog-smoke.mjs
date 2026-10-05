@@ -224,11 +224,13 @@ try {
     checked('selection changed only after persistence; failed save kept prior project selected');
     for (const name of ['DevOps', 'ETL de dados', 'Marketing']) {
         await click(cdp, 'Novo perfil'); await click(cdp, name, '.force-presets button');
+        assert.equal(await cdp.evaluate(`document.querySelector('.force-editor select[id$="-adapter"]')?.value`), 'claude-code');
         await field(cdp, 'System prompt', `Papel ${name}: confirme contexto e peça revisão quando necessário.`);
         await submitTwice(cdp); await noEditor(cdp);
     }
     const saved = await catalog(cdp);
     assert.equal(saved.projects.length, 3); assert.equal(saved.profiles.length, 3);
+    assert.ok(saved.profiles.every(profile => profile.adapter === 'claude-code'));
     assert.equal(saved.projects.find(project => project.name === 'Ops').connection, 'nobody@force-smoke.invalid');
     checked('UI saved reusable DevOps/ETL/Marketing profiles with distinct prompts');
     for (const width of [1440, 900]) {

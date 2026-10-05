@@ -1,5 +1,15 @@
 # Catálogo Force — validação em 4 de outubro de 2026
 
+## Correção do acesso a agentes — 5 de outubro de 2026
+
+O usuário conseguiu cadastrar projeto e perfil, mas não encontrou como iniciar o trabalho. O smoke reproduziu o problema no aplicativo anterior: salvar o projeto não o selecionava e a seção Agentes permanecia escondida. A criação agora seleciona pelo ID retornado pelo backend e revela o botão textual **Novo agente**. Edição de projeto e cadastro de perfil preservam a seleção; nenhum desses cadastros inicia o CLI.
+
+O formulário também sugeria Codex como padrão, embora sua execução ainda estivesse indisponível. Novos perfis agora começam com Claude Code, e o seletor informa a disponibilidade de cada adaptador. Perfis existentes preservam sua escolha; mudar o perfil não inicia uma execução nem modifica o snapshot de instâncias já criadas.
+
+Se o projeto for salvo e a seleção falhar, o editor mantém o objeto salvo e oferece **Tentar selecionar**, com campos bloqueados. A revisão confirmou que esse retry não chama `SaveProject` novamente. O smoke verifica o erro, a seleção anterior e a preservação de um único registro idêntico, incluindo ID e versão, após nova tentativa.
+
+`npm run build:prod`, TypeScript e os smokes reais Linux passaram: dez checks do catálogo e nove do runtime com CLI fictício. Resultados: `/tmp/force-profile-default-green-20261005/report.json` e `/tmp/force-agent-ux-green-retry-20261005/report.json`. O catálogo confirmou o novo padrão no formulário e nos registros salvos; o teste de runtime confirmou o texto visível do botão e preservou a indisponibilidade explícita de Codex e agentes SSH. O pacote macOS desta correção ainda está em validação; os registros de entrega abaixo descrevem os pacotes anteriores.
+
 O código e o DMG de teste entregam projetos locais/SSH e perfis reutilizáveis; a execução e a retomada de agentes continuam nas prioridades 3–4. A instalação mantém apenas o primeiro popup, sem animação ou tour.
 
 ## Evidência local
