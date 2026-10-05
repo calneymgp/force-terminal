@@ -612,6 +612,32 @@ type StartJobParams struct {
 	BlockId  string
 }
 
+func rejectForceJobAttachment(ctx context.Context, blockID string) error {
+	if blockID == "" {
+		return nil
+	}
+	instanceID, err := wstore.ForceAgentForBlock(ctx, blockID)
+	if err != nil {
+		return err
+	}
+	if instanceID != "" {
+		return fmt.Errorf("%w: terminal cannot be assigned a generic job", wstore.ErrForceAgentProtected)
+	}
+	return nil
+}
+
+func persistJobAndAttach(ctx context.Context, job *waveobj.Job) error {
+	return wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		if err := wstore.DBInsert(tx.Context(), job); err != nil {
+			return fmt.Errorf("failed to create job in database: %w", err)
+		}
+		if job.AttachedBlockId == "" {
+			return nil
+		}
+		return attachJobToBlock(tx.Context(), job.OID, job.AttachedBlockId)
+	})
+}
+
 func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	if params.ConnName == "" {
 		return "", fmt.Errorf("connection name is required")
@@ -624,6 +650,9 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 	}
 	if params.Cwd != "" && (!filepath.IsAbs(params.Cwd) || strings.ContainsAny(params.Cwd, "\x00\r\n")) {
 		return "", fmt.Errorf("invalid job working directory")
+	}
+	if err := rejectForceJobAttachment(ctx, params.BlockId); err != nil {
+		return "", err
 	}
 	if params.TermSize == nil {
 		params.TermSize = &waveobj.TermSize{Rows: 24, Cols: 80}
@@ -668,16 +697,13 @@ func StartJob(ctx context.Context, params StartJobParams) (string, error) {
 		Meta:             make(waveobj.MetaMapType),
 	}
 
-	err = wstore.DBInsert(ctx, job)
+	err = persistJobAndAttach(ctx, job)
 	if err != nil {
-		return "", fmt.Errorf("failed to create job in database: %w", err)
+		return "", err
 	}
 	if params.BlockId != "" {
-		// AttachJobToBlock will send status
-		err = AttachJobToBlock(ctx, jobId, params.BlockId)
-		if err != nil {
-			return "", fmt.Errorf("failed to attach job to block: %w", err)
-		}
+		SendBlockJobStatusEvent(ctx, params.BlockId)
+		wcore.SendWaveObjUpdate(waveobj.MakeORef(waveobj.OType_Block, params.BlockId))
 	}
 	bareRpc := wshclient.GetBareRpcClient()
 	broker := bareRpc.StreamBroker
@@ -1416,7 +1442,19 @@ func DeleteJob(ctx context.Context, jobId string) error {
 }
 
 func AttachJobToBlock(ctx context.Context, jobId string, blockId string) error {
+	if err := attachJobToBlock(ctx, jobId, blockId); err != nil {
+		return err
+	}
+	SendBlockJobStatusEvent(ctx, blockId)
+	wcore.SendWaveObjUpdate(waveobj.MakeORef(waveobj.OType_Block, blockId))
+	return nil
+}
+
+func attachJobToBlock(ctx context.Context, jobId string, blockId string) error {
 	err := wstore.WithTx(ctx, func(tx *wstore.TxWrap) error {
+		if err := rejectForceJobAttachment(tx.Context(), blockId); err != nil {
+			return err
+		}
 		var oldJobId string
 
 		err := wstore.DBUpdateFn(tx.Context(), blockId, func(block *waveobj.Block) {
@@ -1456,8 +1494,6 @@ func AttachJobToBlock(ctx context.Context, jobId string, blockId string) error {
 		return err
 	}
 
-	SendBlockJobStatusEvent(ctx, blockId)
-	wcore.SendWaveObjUpdate(waveobj.MakeORef(waveobj.OType_Block, blockId))
 	return nil
 }
 
