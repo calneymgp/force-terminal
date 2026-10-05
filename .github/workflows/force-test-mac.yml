@@ -56,7 +56,7 @@ jobs:
           npx vitest run emain/force-profile.test.ts emain/updater.test.ts frontend/app/store/update-guard.test.ts frontend/app/force/force-agent-model.test.ts frontend/app/view/term/term-agent-safety.test.ts frontend/app/store/global-forceagent-safety.test.ts
           npm run force:release:test
       - name: Validar persistência e isolamento Go
-        run: go test -mod=readonly ./pkg/wcloud ./cmd/server ./pkg/updateguard ./pkg/filestore ./pkg/secretstore ./pkg/wstore ./pkg/wcore ./pkg/blockcontroller ./pkg/shellexec ./pkg/service/objectservice ./pkg/service/workspaceservice ./pkg/service/forceservice ./pkg/wshrpc/wshserver ./pkg/wavebase ./pkg/remote/... ./pkg/wshrpc/wshremote ./pkg/util/shellutil ./pkg/wslconn ./cmd/wsh/cmd
+        run: go test -mod=readonly ./pkg/wcloud ./cmd/server ./pkg/updateguard ./pkg/filestore ./pkg/secretstore ./pkg/wstore ./pkg/wcore ./pkg/blockcontroller ./pkg/shellexec ./pkg/jobcontroller ./pkg/jobmanager ./pkg/service/objectservice ./pkg/service/workspaceservice ./pkg/service/forceservice ./pkg/wshrpc/wshserver ./pkg/wavebase ./pkg/remote/... ./pkg/wshrpc/wshremote ./pkg/util/shellutil ./pkg/wslconn ./cmd/wsh/cmd
       - name: Gerar DMG e ZIP macOS arm64
         run: bash scripts/force-build-mac.sh package
       - name: Conferir pacote e hashes
