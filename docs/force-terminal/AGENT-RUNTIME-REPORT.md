@@ -1,6 +1,6 @@
 # Runtime Agent-first — implementação local
 
-Estado: implementação local em validação. Este relatório não encerra as prioridades 3–4 do EVOLUTION.md e não altera o estado do instalador publicado: o DMG atualmente servido contém o catálogo de projetos/perfis.
+Estado: implementação local entregue no DMG de teste, com CLI fictício validado no aplicativo completo Linux/macOS. Este relatório não encerra as prioridades 3–4 do EVOLUTION.md: conversa real, reboot físico e execução SSH continuam pendentes.
 
 ## Comportamento disponível no código
 
@@ -29,8 +29,12 @@ Verificação em 5 de outubro de 2026:
 | Build Electron de produção e backend `osusergo,sqlite_omit_load_extension` | Aprovado |
 | `force-agent-smoke.mjs` no Linux, aplicativo completo com CLI fictício | 9/9 fluxos aprovados; relatório em `/tmp/force-agent-smoke-reviewed-20261005/report.json` |
 | Regressão `force-catalog-smoke.mjs` no Linux | 8/8 fluxos aprovados com o painel de agentes integrado |
+| DMG macOS arm64: build [37259821901](https://github.com/calneymgp/force-terminal/actions/runs/37259821901), fonte `5e0922a443f439b8cc936b787790d577d484d31c` | Aprovado; testes Go, TypeScript, geração e validadores passaram antes do pacote |
+| App extraído do DMG: smoke [37260967299](https://github.com/calneymgp/force-terminal/actions/runs/37260967299) | 7/7 fluxos essenciais, 8/8 do catálogo e 9/9 de agentes locais com CLI fictício; perfil descartável no runner macOS arm64 |
 
-O primeiro build macOS desta etapa ([37259242057](https://github.com/calneymgp/force-terminal/actions/runs/37259242057)) parou antes do pacote por duas expectativas de fixture: `/var` versus `/private/var` no cwd e um filho de shell que permaneceu no grupo após a saída do CLI. A reserva permaneceu corretamente incerta. Os testes foram corrigidos para usar caminho físico e um CLI fictício que encerra/recolhe seu próprio filho; o teste separado de filho sobrevivente continua exigindo reserva retida. O pacote novo depende de outra execução macOS aprovada.
+O primeiro build macOS desta etapa ([37259242057](https://github.com/calneymgp/force-terminal/actions/runs/37259242057)) parou antes do pacote por duas expectativas de fixture: `/var` versus `/private/var` no cwd e um filho de shell que permaneceu no grupo após a saída do CLI. A reserva permaneceu corretamente incerta. Os testes foram corrigidos para usar caminho físico e um CLI fictício que encerra/recolhe seu próprio filho; o teste separado de filho sobrevivente continua exigindo reserva retida. A execução seguinte e os três smokes do pacote foram aprovados.
+
+O DMG ad hoc 0.14.5 substituiu o instalador na [página privada Tailscale](https://calneyserver.tail802eab.ts.net:8443/force-terminal/). Tamanho: **201383210 bytes**; SHA-256: `053630f4b77202cd3eb1954f038bd11d40be44faeaf62f042abbfa2be5943608`. O conjunto DMG/ZIP/blockmaps/metadados foi validado pelo manifesto; o download completo pela URL teve o mesmo hash. O primeiro popup foi preservado, Continue abre diretamente o aplicativo e a reabertura não repete o onboarding. Não foi publicado feed ou release estável.
 
 O roteiro `scripts/force-agent-smoke.mjs` usa o aplicativo Electron e backend reais, com perfil descartável e CLI fictício. Verifica criação pela interface, um único processo em clique repetido, contexto congelado, fechamento/reabertura sem início automático, reconexão no mesmo bloco/UUID e cadastro inerte de SSH/Codex. Nenhum provedor ou host SSH é chamado.
 
@@ -43,6 +47,6 @@ O roteiro `scripts/force-agent-smoke.mjs` usa o aplicativo Electron e backend re
 - O CLI usa o contexto de histórico existente do usuário. O Force não instala, autentica nem lê conversas/credenciais do provedor; instalações customizadas fora dos locais considerados dependem de PATH.
 - Fechar o aplicativo pode encerrar processos locais. Não há promessa de sobrevivência após desligamento, contenção de processos que se destacam para outro grupo, ou conclusão de tarefa inferida a partir do exit code.
 - Uma queda entre o checkpoint de lançamento e a persistência de PID/boot ID permanece incerta, inclusive após reboot: não há prova suficiente para iniciar novamente. A remoção do prompt é best-effort e sua referência de limpeza é mantida em memória; um crash pode deixar o arquivo privado temporário para a limpeza do sistema. Não há alegação de remoção após crash/reinício nem retry de erro de remoção.
-- Pacote macOS arm64, reboot real do notebook, conversa real, SSH e aceite físico no M5 precisam de provas próprias. O canal de atualização instalada N→N+1 continua pendente de identidade de assinatura estável autorizada.
+- O pacote macOS arm64 foi exercitado no runner com CLI fictício. Reboot real do notebook, conversa real, SSH e aceite físico no M5 precisam de provas próprias. O canal de atualização instalada N→N+1 continua pendente de identidade de assinatura estável autorizada.
 
 Fonte da instalação nativa: [documentação oficial Claude Code](https://code.claude.com/docs/en/setup#auto-updates). Critérios completos em [.plans/force-agent-runtime/PLAN.md](../../.plans/force-agent-runtime/PLAN.md).
