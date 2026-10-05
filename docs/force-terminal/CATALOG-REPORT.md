@@ -8,7 +8,9 @@ O formulário também sugeria Codex como padrão, embora sua execução ainda es
 
 Se o projeto for salvo e a seleção falhar, o editor mantém o objeto salvo e oferece **Tentar selecionar**, com campos bloqueados. A revisão confirmou que esse retry não chama `SaveProject` novamente. O smoke verifica o erro, a seleção anterior e a preservação de um único registro idêntico, incluindo ID e versão, após nova tentativa.
 
-`npm run build:prod`, TypeScript e os smokes reais Linux passaram: dez checks do catálogo e nove do runtime com CLI fictício. Resultados: `/tmp/force-profile-default-green-20261005/report.json` e `/tmp/force-agent-ux-green-retry-20261005/report.json`. O catálogo confirmou o novo padrão no formulário e nos registros salvos; o teste de runtime confirmou o texto visível do botão e preservou a indisponibilidade explícita de Codex e agentes SSH. O pacote macOS desta correção ainda está em validação; os registros de entrega abaixo descrevem os pacotes anteriores.
+`npm run build:prod`, TypeScript e os smokes reais Linux passaram: dez checks do catálogo e nove do runtime com CLI fictício. Resultados: `/tmp/force-profile-default-green-20261005/report.json` e `/tmp/force-agent-ux-green-retry-20261005/report.json`. O catálogo confirmou o novo padrão no formulário e nos registros salvos; o teste de runtime confirmou o texto visível do botão e preservou a indisponibilidade explícita de Codex e agentes SSH.
+
+O [build 37309978343](https://github.com/calneymgp/force-terminal/actions/runs/37309978343), fonte `5ea26a44d8a6615c50fd621d739be017c485e6e7`, passou no [smoke macOS 37311517628](https://github.com/calneymgp/force-terminal/actions/runs/37311517628): 7 checks essenciais, 10 do catálogo e 9 do runtime. Substituiu o DMG na página privada. Download completo HTTP 200, 201601153 bytes e SHA-256 `93336053b239ef3c20a43deeb4b70a483ef3e05158db2614d10936d5039d11af` conferidos. Os registros de entrega abaixo descrevem os pacotes anteriores.
 
 O código e o DMG de teste entregam projetos locais/SSH e perfis reutilizáveis; a execução e a retomada de agentes continuam nas prioridades 3–4. A instalação mantém apenas o primeiro popup, sem animação ou tour.
 
