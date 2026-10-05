@@ -1,6 +1,6 @@
 # Catálogo Force — validação em 4 de outubro de 2026
 
-O código entrega projetos locais/SSH e perfis reutilizáveis; a execução e a retomada de agentes continuam nas prioridades 3–4. O DMG servido anteriormente contém a simplificação do onboarding. O novo pacote do catálogo ainda está em preparação.
+O código e o DMG de teste entregam projetos locais/SSH e perfis reutilizáveis; a execução e a retomada de agentes continuam nas prioridades 3–4. A instalação mantém apenas o primeiro popup, sem animação ou tour.
 
 ## Evidência local
 
@@ -19,4 +19,12 @@ Salvar projeto SSH guarda somente a referência; os testes não abriram conexão
 
 O novo fluxo ainda utiliza abas e terminais herdados. Perfil é configuração, não instância executando. Desligamento abrupto, reboot, conversa de CLI, reconexão do agente e atualização assinada N→N+1 não estão comprovados nesta entrega.
 
-O workflow [force-smoke-mac.yml](../../.github/workflows/force-smoke-mac.yml) agora executa também esse smoke do catálogo no aplicativo extraído do DMG. O resultado nativo será registrado após a execução; o M5 físico continua com aceite próprio.
+## Pacote macOS entregue
+
+O [build 37246104954](https://github.com/calneymgp/force-terminal/actions/runs/37246104954) empacotou o commit `f0c935a0a38508fa091ba7dfb6cbe0abfd84939e`. Manifesto, referências, arquitetura e hashes foram conferidos pelo workflow e novamente após baixar os artefatos.
+
+O [smoke 37247460436](https://github.com/calneymgp/force-terminal/actions/runs/37247460436) passou em Darwin arm64 com o aplicativo extraído do mesmo DMG: sete checks de onboarding, terminal, arquivos/editor, quit e reabertura; mais os oito checks do catálogo descritos acima. O roteiro foi ajustado no commit `603b780d` para reconhecer o marcador de execução mesmo quando o terminal quebra uma linha; a tentativa anterior falhou nessa comparação, com o comando já executado. O pacote não precisou de alteração para essa correção do teste.
+
+Distribuição privada: [página com botão](https://calneyserver.tail802eab.ts.net:8443/force-terminal/), build `37246104954`. DMG ad hoc `0.14.5`, 201196571 bytes, SHA-256 `d82d47f8b816a978acf2e5c72059c6dad00eefae3ab503c7b3fae3de73b09d5a`. HTTP 200, range 206, trailer UDIF `koly` e o hash do arquivo servido foram conferidos. Nenhum certificado/secret, release estável, porta ou Funnel foi criado.
+
+O M5 físico, SSH real, execução/resume de CLI e atualização assinada continuam com aceites próprios pendentes.

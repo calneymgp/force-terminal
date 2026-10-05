@@ -85,10 +85,11 @@
 - [x] Confirmar ausência de processos CLI/SSH iniciados pelo cadastro, importação de registros Wave ou cópia de credenciais pelo cadastro; conferir os diretórios Force temporários.
 - [x] Conferir persistência, IDs/versões e recarga entre views; não usar teste unitário do armazenamento para alegar validação da UI.
 - [x] Registrar prova disponível e aceites físicos ainda pendentes, sem declarar prioridades 3–4 concluídas.
-- [ ] Revisar/commitar somente arquivos da fatia e continuar para a integração CLI/retomada.
+- [x] Revisar/commitar somente arquivos da fatia e continuar para a integração CLI/retomada.
 
 ## Status Log
 
 - 2026-10-04: plano derivado do EVOLUTION.md autorizado; auditoria confirma ausência de domínios Agent-first. Prioridades 0/1a/1b possuem provas parciais e aceites externos pendentes. Implementação do catálogo inicia sem depender de assinatura.
 
 - 2026-10-04: domínio, UI e contratos implementados. Backend sem cache, TypeScript, build e oito checks reais passaram; duas janelas, teclado, layouts, retry idempotente e reabertura comprovados. Teste macOS do novo pacote ainda pendente.
+- 2026-10-04: commit `f0c935a0`, build `37246104954` e smoke nativo `37247460436` aprovados. DMG atualizado no Tailscale; sete checks essenciais e oito do catálogo passaram no pacote Darwin arm64. Próximo plano: `.plans/force-agent-runtime/PLAN.md`, com implementação e aceites de CLI ainda abertos. Objetivo integral permanece ativo.
