@@ -555,6 +555,63 @@ declare global {
         streammeta: StreamMeta;
     };
 
+    // wshrpc.CommandRemoteForceAgentCleanupData
+    type CommandRemoteForceAgentCleanupData = {
+        protocol: string;
+        nonce: string;
+        cleanuphandle: string;
+    };
+
+    // wshrpc.CommandRemoteForceAgentCleanupRtnData
+    type CommandRemoteForceAgentCleanupRtnData = {
+        protocol: string;
+        nonce: string;
+    };
+
+    // wshrpc.CommandRemoteForceAgentContextData
+    type CommandRemoteForceAgentContextData = {
+        protocol: string;
+        nonce: string;
+    };
+
+    // wshrpc.CommandRemoteForceAgentContextRtnData
+    type CommandRemoteForceAgentContextRtnData = {
+        protocol: string;
+        nonce: string;
+        uid: string;
+        contextfingerprint: string;
+    };
+
+    // wshrpc.CommandRemoteForceAgentPrepareData
+    type CommandRemoteForceAgentPrepareData = {
+        protocol: string;
+        nonce: string;
+        root: string;
+        cwd: string;
+        prompt: string;
+        prompthash: string;
+        expecteduid: string;
+        expectedcontextfingerprint: string;
+    };
+
+    // wshrpc.CommandRemoteForceAgentPrepareRtnData
+    type CommandRemoteForceAgentPrepareRtnData = {
+        protocol: string;
+        nonce: string;
+        uid: string;
+        contextfingerprint: string;
+        canonicalroot: string;
+        canonicalcheckout: string;
+        canonicalcwd: string;
+        clipath: string;
+        promptpath: string;
+        prompthash: string;
+        parentmode: number;
+        filemode: number;
+        stagingmethod: string;
+        cleanuphandle: string;
+    };
+
     // wshrpc.CommandRemoteListEntriesData
     type CommandRemoteListEntriesData = {
         path: string;

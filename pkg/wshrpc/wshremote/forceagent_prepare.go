@@ -3,6 +3,7 @@ package wshremote
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -24,6 +25,7 @@ type forceAgentHostPrepareRequest struct {
 	PromptHash                 string
 	ExpectedUID                string
 	ExpectedContextFingerprint string
+	ContextEnv                 map[string]string
 }
 
 type forceAgentHostPrepared struct {
@@ -46,6 +48,7 @@ type forceAgentHostPrepared struct {
 type forceAgentPrepareOps struct {
 	rename    func(string, string) error
 	removeAll func(string) error
+	baseDir   string
 }
 
 func prepareForceAgentHost(ctx context.Context, req forceAgentHostPrepareRequest) (*forceAgentHostPrepared, error) {
@@ -73,7 +76,7 @@ func prepareForceAgentHostWithOps(ctx context.Context, req forceAgentHostPrepare
 	if err != nil {
 		return nil, err
 	}
-	uid, contextFingerprint, err := forceAgentHostUserContext()
+	uid, contextFingerprint, err := forceAgentHostUserContextForEnv(req.ContextEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +84,7 @@ func prepareForceAgentHostWithOps(ctx context.Context, req forceAgentHostPrepare
 		(req.ExpectedContextFingerprint != "" && req.ExpectedContextFingerprint != contextFingerprint) {
 		return nil, errors.New("agent execution context changed")
 	}
-	cliPath, err := findForceAgentClaude()
+	cliPath, err := findForceAgentClaudeWithEnv(req.ContextEnv)
 	if err != nil {
 		return nil, err
 	}
@@ -148,12 +151,20 @@ func resolveForceAgentHostDestination(rootPath, cwdPath string) (string, string,
 }
 
 func forceAgentHostUserContext() (string, string, error) {
+	return forceAgentHostUserContextForEnv(nil)
+}
+
+func forceAgentHostUserContextForEnv(env map[string]string) (string, string, error) {
 	current, err := user.Current()
 	if err != nil || current.Uid == "" || current.HomeDir == "" {
 		return "", "", errors.New("agent user context unavailable")
 	}
 	home := os.Getenv("HOME")
 	configDir := os.Getenv("CLAUDE_CONFIG_DIR")
+	if env != nil {
+		home = env["HOME"]
+		configDir = env["CLAUDE_CONFIG_DIR"]
+	}
 	if !validForceAgentHostPath(home) || configDir != "" && !validForceAgentHostPath(configDir) {
 		return "", "", errors.New("agent CLI history context unavailable")
 	}
@@ -162,11 +173,27 @@ func forceAgentHostUserContext() (string, string, error) {
 }
 
 func findForceAgentClaude() (string, error) {
+	return findForceAgentClaudeWithEnv(nil)
+}
+
+func findForceAgentClaudeWithEnv(env map[string]string) (string, error) {
 	var candidates []string
-	if path, err := exec.LookPath("claude"); err == nil {
-		candidates = append(candidates, path)
+	if env == nil {
+		if path, err := exec.LookPath("claude"); err == nil {
+			candidates = append(candidates, path)
+		}
+	} else {
+		for _, dir := range filepath.SplitList(env["PATH"]) {
+			if filepath.IsAbs(dir) {
+				candidates = append(candidates, filepath.Join(dir, "claude"))
+			}
+		}
 	}
-	if home := os.Getenv("HOME"); validForceAgentHostPath(home) {
+	home := os.Getenv("HOME")
+	if env != nil {
+		home = env["HOME"]
+	}
+	if validForceAgentHostPath(home) {
 		candidates = append(candidates, filepath.Join(home, ".local", "bin", "claude"))
 	}
 	if runtime.GOOS == "darwin" {
@@ -186,7 +213,13 @@ func findForceAgentClaude() (string, error) {
 }
 
 func stageForceAgentPrompt(ctx context.Context, prompt []byte, wantHash string, ops forceAgentPrepareOps) (string, os.FileMode, os.FileMode, func() error, error) {
-	dir, err := os.MkdirTemp("", "force-agent-prompt-")
+	var dir string
+	var err error
+	if ops.baseDir == "" {
+		dir, err = os.MkdirTemp("", "force-agent-prompt-")
+	} else {
+		dir, err = makeForceAgentStageDir(ops.baseDir)
+	}
 	if err != nil {
 		return "", 0, 0, nil, errors.New("agent private staging failed")
 	}
@@ -234,6 +267,22 @@ func stageForceAgentPrompt(ctx context.Context, prompt []byte, wantHash string, 
 		return fail(err)
 	}
 	return path, parentMode, fileMode, cleanup, nil
+}
+
+func makeForceAgentStageDir(base string) (string, error) {
+	for range 3 {
+		var random [16]byte
+		if _, err := rand.Read(random[:]); err != nil {
+			return "", err
+		}
+		dir := filepath.Join(base, hex.EncodeToString(random[:]))
+		if err := os.Mkdir(dir, 0700); err == nil {
+			return dir, nil
+		} else if !os.IsExist(err) {
+			return "", err
+		}
+	}
+	return "", errors.New("agent stage ID unavailable")
 }
 
 func verifyForceAgentStaging(path, wantHash string) (os.FileMode, os.FileMode, error) {

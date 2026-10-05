@@ -395,9 +395,6 @@ outer:
 			if !inputChMore {
 				break outer
 			}
-			if w.Debug {
-				log.Printf("[%s] received message: %s\n", w.DebugName, string(inputVal.MsgBytes))
-			}
 		case resIdTimeout = <-w.CtxDoneCh:
 			if w.Debug {
 				log.Printf("[%s] received request timeout: %s\n", w.DebugName, resIdTimeout)
@@ -409,8 +406,11 @@ outer:
 		var msg RpcMessage
 		err := json.Unmarshal(inputVal.MsgBytes, &msg)
 		if err != nil {
-			log.Printf("wshrpc received bad message: %v\n", err)
+			log.Printf("wshrpc received malformed message bytes=%d\n", len(inputVal.MsgBytes))
 			continue
+		}
+		if w.Debug {
+			log.Printf("[%s] received rpc packet bytes=%d request=%t response=%t\n", w.DebugName, len(inputVal.MsgBytes), msg.IsRpcRequest(), msg.ResId != "")
 		}
 		if msg.Cancel {
 			if msg.ReqId != "" {

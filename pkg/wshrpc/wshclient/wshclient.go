@@ -742,6 +742,24 @@ func RemoteFileTouchCommand(w *wshutil.WshRpc, data string, opts *wshrpc.RpcOpts
 	return err
 }
 
+// command "remoteforceagentcleanup", wshserver.RemoteForceAgentCleanupCommand
+func RemoteForceAgentCleanupCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteForceAgentCleanupData, opts *wshrpc.RpcOpts) (*wshrpc.CommandRemoteForceAgentCleanupRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandRemoteForceAgentCleanupRtnData](w, "remoteforceagentcleanup", data, opts)
+	return resp, err
+}
+
+// command "remoteforceagentcontext", wshserver.RemoteForceAgentContextCommand
+func RemoteForceAgentContextCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteForceAgentContextData, opts *wshrpc.RpcOpts) (*wshrpc.CommandRemoteForceAgentContextRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandRemoteForceAgentContextRtnData](w, "remoteforceagentcontext", data, opts)
+	return resp, err
+}
+
+// command "remoteforceagentprepare", wshserver.RemoteForceAgentPrepareCommand
+func RemoteForceAgentPrepareCommand(w *wshutil.WshRpc, data wshrpc.CommandRemoteForceAgentPrepareData, opts *wshrpc.RpcOpts) (*wshrpc.CommandRemoteForceAgentPrepareRtnData, error) {
+	resp, err := sendRpcRequestCallHelper[*wshrpc.CommandRemoteForceAgentPrepareRtnData](w, "remoteforceagentprepare", data, opts)
+	return resp, err
+}
+
 // command "remotegetinfo", wshserver.RemoteGetInfoCommand
 func RemoteGetInfoCommand(w *wshutil.WshRpc, opts *wshrpc.RpcOpts) (wshrpc.RemoteInfo, error) {
 	resp, err := sendRpcRequestCallHelper[wshrpc.RemoteInfo](w, "remotegetinfo", nil, opts)

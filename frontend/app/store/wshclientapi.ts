@@ -744,6 +744,24 @@ export class RpcApiType {
         return client.wshRpcCall("remotefiletouch", data, opts);
     }
 
+    // command "remoteforceagentcleanup" [call]
+    RemoteForceAgentCleanupCommand(client: WshClient, data: CommandRemoteForceAgentCleanupData, opts?: RpcOpts): Promise<CommandRemoteForceAgentCleanupRtnData> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remoteforceagentcleanup", data, opts);
+        return client.wshRpcCall("remoteforceagentcleanup", data, opts);
+    }
+
+    // command "remoteforceagentcontext" [call]
+    RemoteForceAgentContextCommand(client: WshClient, data: CommandRemoteForceAgentContextData, opts?: RpcOpts): Promise<CommandRemoteForceAgentContextRtnData> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remoteforceagentcontext", data, opts);
+        return client.wshRpcCall("remoteforceagentcontext", data, opts);
+    }
+
+    // command "remoteforceagentprepare" [call]
+    RemoteForceAgentPrepareCommand(client: WshClient, data: CommandRemoteForceAgentPrepareData, opts?: RpcOpts): Promise<CommandRemoteForceAgentPrepareRtnData> {
+        if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remoteforceagentprepare", data, opts);
+        return client.wshRpcCall("remoteforceagentprepare", data, opts);
+    }
+
     // command "remotegetinfo" [call]
     RemoteGetInfoCommand(client: WshClient, opts?: RpcOpts): Promise<RemoteInfo> {
         if (this.mockClient) return this.mockClient.mockWshRpcCall(client, "remotegetinfo", null, opts);

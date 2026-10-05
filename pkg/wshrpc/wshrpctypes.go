@@ -130,6 +130,9 @@ type WshRpcInterface interface {
 	RemoteStreamCpuDataCommand(ctx context.Context) chan RespOrErrorUnion[TimeSeriesData]
 	RemoteGetInfoCommand(ctx context.Context) (RemoteInfo, error)
 	RemoteInstallRcFilesCommand(ctx context.Context) error
+	RemoteForceAgentContextCommand(ctx context.Context, data CommandRemoteForceAgentContextData) (*CommandRemoteForceAgentContextRtnData, error)
+	RemoteForceAgentPrepareCommand(ctx context.Context, data CommandRemoteForceAgentPrepareData) (*CommandRemoteForceAgentPrepareRtnData, error)
+	RemoteForceAgentCleanupCommand(ctx context.Context, data CommandRemoteForceAgentCleanupData) (*CommandRemoteForceAgentCleanupRtnData, error)
 	RemoteStartJobCommand(ctx context.Context, data CommandRemoteStartJobData) (*CommandStartJobRtnData, error)
 	RemoteReconnectToJobManagerCommand(ctx context.Context, data CommandRemoteReconnectToJobManagerData) (*CommandRemoteReconnectToJobManagerRtnData, error)
 	RemoteDisconnectFromJobManagerCommand(ctx context.Context, data CommandRemoteDisconnectFromJobManagerData) error
@@ -745,6 +748,57 @@ type CommandStartJobData struct {
 	Env        map[string]string `json:"env"`
 	TermSize   waveobj.TermSize  `json:"termsize"`
 	StreamMeta *StreamMeta       `json:"streammeta,omitempty"`
+}
+
+type CommandRemoteForceAgentContextData struct {
+	Protocol string `json:"protocol"`
+	Nonce    string `json:"nonce"`
+}
+
+type CommandRemoteForceAgentContextRtnData struct {
+	Protocol           string `json:"protocol"`
+	Nonce              string `json:"nonce"`
+	UID                string `json:"uid"`
+	ContextFingerprint string `json:"contextfingerprint"`
+}
+
+type CommandRemoteForceAgentPrepareData struct {
+	Protocol                   string `json:"protocol"`
+	Nonce                      string `json:"nonce"`
+	Root                       string `json:"root"`
+	Cwd                        string `json:"cwd"`
+	Prompt                     []byte `json:"prompt"`
+	PromptHash                 string `json:"prompthash"`
+	ExpectedUID                string `json:"expecteduid"`
+	ExpectedContextFingerprint string `json:"expectedcontextfingerprint"`
+}
+
+type CommandRemoteForceAgentPrepareRtnData struct {
+	Protocol           string `json:"protocol"`
+	Nonce              string `json:"nonce"`
+	UID                string `json:"uid"`
+	ContextFingerprint string `json:"contextfingerprint"`
+	CanonicalRoot      string `json:"canonicalroot"`
+	CanonicalCheckout  string `json:"canonicalcheckout"`
+	CanonicalCWD       string `json:"canonicalcwd"`
+	CLIPath            string `json:"clipath"`
+	PromptPath         string `json:"promptpath"`
+	PromptHash         string `json:"prompthash"`
+	ParentMode         uint32 `json:"parentmode"`
+	FileMode           uint32 `json:"filemode"`
+	StagingMethod      string `json:"stagingmethod"`
+	CleanupHandle      string `json:"cleanuphandle"`
+}
+
+type CommandRemoteForceAgentCleanupData struct {
+	Protocol      string `json:"protocol"`
+	Nonce         string `json:"nonce"`
+	CleanupHandle string `json:"cleanuphandle"`
+}
+
+type CommandRemoteForceAgentCleanupRtnData struct {
+	Protocol string `json:"protocol"`
+	Nonce    string `json:"nonce"`
 }
 
 type CommandRemoteStartJobData struct {
