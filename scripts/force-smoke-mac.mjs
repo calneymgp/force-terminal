@@ -186,7 +186,9 @@ try {
     await cdp.call('Input.insertText', { text: `printf 'FORCE_%s\\n' 'MAC_SMOKE_${suffix}'` });
     await cdp.call('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', text: '\r', unmodifiedText: '\r', windowsVirtualKeyCode: 13 });
     await cdp.call('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
-    await until(() => cdp.evaluate(`Array.from(document.querySelectorAll('.xterm-rows > div')).some(row=>row.textContent.trim()===${JSON.stringify(marker)})`), 'terminal command output');
+    // A sidebar can make terminal output wrap. The command deliberately splits
+    // the marker's prefix, so its full text can only come from execution output.
+    await until(() => cdp.evaluate(`Array.from(document.querySelectorAll('.xterm-rows > div')).map(row=>row.textContent).join('').includes(${JSON.stringify(marker)})`), 'terminal command output');
     checked('local terminal executed command and rendered distinct output');
     const file = path.join(root, 'fixture.txt');
     fs.writeFileSync(file, 'before-smoke\n');
