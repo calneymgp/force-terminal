@@ -204,7 +204,7 @@ try {
             const afterRetry = (await catalog(cdp)).projects.filter(project => project.name === 'Beta');
             assert.equal(afterRetry.length, 1);
             assert.deepEqual(afterRetry[0], beforeRetry);
-            checked('selection retry retained the saved project without another save or duplicate');
+            checked('selection retry retained the same project and version without a duplicate');
         }
         await noEditor(cdp);
         await until(() => cdp.evaluate(`document.querySelector('.force-list [aria-current=true] strong')?.textContent === ${JSON.stringify(name)}`), 'saved project automatically selected');
