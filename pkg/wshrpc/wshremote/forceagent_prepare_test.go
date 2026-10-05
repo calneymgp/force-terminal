@@ -15,6 +15,10 @@ import (
 func forcePrepareFixture(t *testing.T) (forceAgentHostPrepareRequest, string) {
 	t.Helper()
 	base := t.TempDir()
+	base, err := filepath.EvalSymlinks(base)
+	if err != nil {
+		t.Fatal(err)
+	}
 	bin := filepath.Join(base, "fake bin")
 	if err := os.Mkdir(bin, 0700); err != nil {
 		t.Fatal(err)
